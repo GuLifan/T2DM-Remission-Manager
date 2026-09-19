@@ -64,6 +64,17 @@
 | 39 | 2026-09-20 | 运行测试与静态检查（提权） | `uv run pytest -q`（24 passed）、`uv run ruff check`（全绿） | require_escalated | 修正一处新增非空列导致的既有测试失败；按 FastAPI 惯例在 pyproject 忽略 B008 并注明理由。 |
 | 40 | 2026-09-20 | 更新文档并提交 M2 | `CHANGELOG.md`、`_SPEC/08`、本文件 | workspace-write + git | M2 收尾提交并推送至 `origin/develop`。 |
 
+## 二之三、M3 阶段行为（2026-09-20）
+
+| 序号 | 时间 | 行为 | 对象 | 权限模式 | 备注 |
+| --- | --- | --- | --- | --- | --- |
+| 41 | 2026-09-20 | 读取甲方锁定文案（只读） | `_DEV/甲方材料/md派生/临床流程实现表_输出模板.md`（30 条）、V0.1 `outputs.py`（SYS 文案与枚举） | 只读 | 用于逐字录入锁定文案并核对枚举取值。 |
+| 42 | 2026-09-20 | 写入领域层 | `app/domain/{__init__,states,enums,templates,branches,transitions}.py` | workspace-write | 状态、枚举、锁定文案、分支优先级、合法转换表集中在领域层，作为单一数据源。 |
+| 43 | 2026-09-20 | 写入工具层与服务层 | `app/utils/date_utils.py`、`app/services/{defaults,pre_assessment,full_assessment,phase_review,observation,remission_judge,post_remission}.py`、`app/models/clinical.py` | workspace-write | 六个服务均为纯函数；返回前调用 `validate_transition()`。 |
+| 44 | 2026-09-20 | 写入 M3 测试 | `tests/{test_state_machine,test_date_utils,test_templates_frozen,test_services_e1_e2,test_services_e3_obs,test_services_e4_e5,test_locked_cases}.py` | workspace-write | 含 3 个锁定病例端到端与四条红线回归；模板冻结测试直接比对甲方原件。 |
+| 45 | 2026-09-20 | 运行测试与静态检查（提权） | `uv run pytest`（133 passed）、`uv run ruff check`（全绿） | require_escalated | 修复三处问题：自环转换登记不全、阶段比较字段用错、终态键读取方式；详见 `_SPEC/08` M3 问题表。 |
+| 46 | 2026-09-20 | 回填映射与更新文档 | `mapping.md`（32 条规则回填实现与测试位置）、`_SPEC/08`、`CHANGELOG.md`、本文件 | workspace-write | API 列仍待 M4 回填。 |
+
 ---
 
 ## 二、当前授权范围（Lifan 授予，2026-09-19）

@@ -27,6 +27,14 @@ V0.1 为历史版本（工作区 `ETMMS_V0.1_dev_260818`，只读保留，不再
 - **数据库迁移** `375fb4767e0a`：新增 `users.failed_login_count` 与 `users.locked_until`
 - **测试**：新增密码/令牌安全测试、账号接口测试、患者档案与审计测试；后端 pytest 由 3 项增至 **24 项**
 
+### 新增（M3：临床内核）
+
+- **领域层（单一数据源）**：`domain/states.py`（9 状态 + 6 流程单元）、`domain/enums.py`（字段取值）、`domain/templates.py`（30 条锁定文案 + 2 条 SYS 兜底）、`domain/branches.py`（阶段复评分支优先级表）、`domain/transitions.py`（合法转换表 + 校验 + 无出口检查）
+- **6 个临床服务（纯函数）**：`pre_assessment` / `full_assessment` / `phase_review` / `observation` / `remission_judge` / `post_remission`；时间由调用方注入，返回前强制校验状态跳转
+- **日期与默认值**：`utils/date_utils.py`（日历月加法月末钳位、最早可判定日期 MAX 规则）、`services/defaults.py`（12 周复评间隔与随访节奏的唯一来源）
+- **分支优先级落地**：阶段复评按"明显失控 > 治疗下达标用获益药 > 停用最后一种药 > 常规动作"裁决；**被覆盖分支必须返回原因**，互斥分支同时为真直接报错（修复 V0.1"停药日期被静默丢弃"的缺陷）
+- **测试**：状态机矩阵与无出口检查、日期边界、六个服务全分支、3 个锁定病例端到端、四条红线回归、锁定文案与甲方原件逐字比对；后端 pytest 由 24 项增至 **133 项**
+
 ### 新增（M0：规范基线）
 
 - 建立 V1.0 工程骨架：`_DEV`（项目描述与甲方依据）、`_SPEC`（纲领性文件）、`backend`、`frontend`、`data`、`scripts`、`交付物`

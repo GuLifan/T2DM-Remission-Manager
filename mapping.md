@@ -6,45 +6,47 @@
 
 ---
 
-## 一、规则清单（临床含义与输出模板，稳定不变）
+## 一、规则清单（临床含义 → 输出模板 → 服务层实现 → API → 测试）
 
-| 规则ID | 临床含义 | 输出模板 | 服务层实现（M3 回填） | API（M4 回填） | 测试（M3 回填） |
+> 服务层实现与测试已在 M3 回填；API 列待 M4（临床流程接口）接入后回填。
+
+| 规则ID | 临床含义 | 输出模板 | 服务层实现 | API | 测试 |
 | --- | --- | --- | --- | --- | --- |
-| E1-B01 | 预评估：进入完整评估 | OUT-E1-ENTER | 待回填 | 待回填 | 待回填 |
-| E1-B02 | 预评估：急性安全暂缓（置顶） | OUT-E1-HOLD-ACUTE | 待回填 | 待回填 | 待回填 |
-| E1-B03 | 预评估：分型存疑暂缓 | OUT-E1-HOLD-TYPE | 待回填 | 待回填 | 待回填 |
-| E1-B04 | 预评估：治疗背景不足暂缓 | OUT-E1-HOLD-DATA | 待回填 | 待回填 | 待回填 |
-| E1-B05 | 预评估：当前不启动 | OUT-E1-NOSTART | 待回填 | 待回填 | 待回填 |
-| E2-B01 | 完整评估：启动＋血糖稳定 | OUT-E2-STABLE | 待回填 | 待回填 | 待回填 |
-| E2-B02 | 完整评估：启动＋缓解诱导 | OUT-E2-INDUCTION | 待回填 | 待回填 | 待回填 |
-| E2-B03 | 完整评估：暂缓补充资料 | OUT-E2-HOLD | 待回填 | 待回填 | 待回填 |
-| E2-B04 | 完整评估：当前不启动 | OUT-E2-NOSTART | 待回填 | 待回填 | 待回填 |
-| E3-B01 | 复评：继续当前阶段 | OUT-E3-CONTINUE | 待回填 | 待回填 | 待回填 |
-| E3-B02 | 复评：调整方案或目标 | OUT-E3-ADJUST | 待回填 | 待回填 | 待回填 |
-| E3-B03/B04 | 复评：阶段互转（医生确认） | OUT-E3-SWITCH | 待回填 | 待回填 | 待回填 |
-| E3-B05 | 复评：结束主动管理 | OUT-E3-END | 待回填 | 待回填 | 待回填 |
-| E3-B06 | 复评：治疗下达标仍用获益药 | OUT-E3-ON-TREATMENT | 待回填 | 待回填 | 待回填 |
-| E3-B07 | 复评：停最后一种药 → 自动观察期 | OUT-E3-OBS-ENTER | 待回填 | 待回填 | 待回填 |
-| E3-B08 | 复评：明显血糖失控 → 血糖稳定 | OUT-E3-ADJUST | 待回填 | 待回填 | 待回填 |
-| A1-B01 | 观察期：进入与最早判定日计算 | — | 待回填 | 待回填 | 待回填 |
-| A1-B02 | 观察期：未到期提示 | OUT-A1-WAIT | 待回填 | 待回填 | 待回填 |
-| A1-B03 | 观察期：到期开放判定 | OUT-A1-DUE | 待回填 | 待回填 | 待回填 |
-| A1-B04 | 观察期：因高血糖退出 | OUT-A1-RESTART-HIGH | 待回填 | 待回填 | 待回填 |
-| A1-B05 | 观察期：因获益用药退出 | OUT-A1-RESTART-BENEFIT | 待回填 | 待回填 | 待回填 |
-| E4-B01 | 判定：未到期阻断 | OUT-E4-NOT-DUE | 待回填 | 待回填 | 待回填 |
-| E4-B02 | 判定：仍用药阻断 | OUT-E4-ON-DRUG | 待回填 | 待回填 | 待回填 |
-| E4-B03 | 判定：客观条件核对 | OUT-E4-OBJECTIVE-MET | 待回填 | 待回填 | 待回填 |
-| E4-B04 | 判定：医生确认缓解 | OUT-E4-CONFIRMED | 待回填 | 待回填 | 待回填 |
-| E4-B05 | 判定：暂不确认 → 定向复核 | OUT-E4-UNCERTAIN | 待回填 | 待回填 | 待回填 |
-| E4-B06 | 判定：未达标 → 返回事件3 | OUT-E4-NOT-MET | 待回填 | 待回填 | 待回填 |
-| E4-B07 | 判定：不可解释 → 复核（F041=否 返回 ST20） | OUT-E4-UNCERTAIN | 待回填 | 待回填 | 待回填 |
-| E5-B01 | 缓解后：维持 | OUT-E5-MAINTAIN | 待回填 | 待回填 | 待回填 |
-| E5-B02 | 缓解后：风险上升 | OUT-E5-RISK | 待回填 | 待回填 | 待回填 |
-| E5-B03 | 缓解后：获益用药不可评价 | OUT-E5-UNEVALUABLE | 待回填 | 待回填 | 待回填 |
-| E5-B04 | 缓解后：缓解终止 → 返回事件3 | OUT-E5-END | 待回填 | 待回填 | 待回填 |
-| E5-B05 | 缓解后：默认随访计划 | OUT-E5-FOLLOWUP | 待回填 | 待回填 | 待回填 |
-| SYS-E1-CLOSE | 兜底提示：分型复核明确为其他类型糖尿病时关闭本路径（非锁定临床模板） | SYS-E1-CLOSE | 待回填 | 待回填 | 待回填 |
-| SYS-E5-REVIEW | 兜底提示：缓解后血糖暂不能解释时保留观察（非锁定临床模板） | SYS-E5-REVIEW | 待回填 | 待回填 | 待回填 |
+| E1-B01 | 预评估：进入完整评估 | OUT-E1-ENTER | `services/pre_assessment.py::evaluate_pre_assessment` | 待 M4 | `tests/test_services_e1_e2.py` |
+| E1-B02 | 预评估：急性安全暂缓（置顶） | OUT-E1-HOLD-ACUTE | 同上（暂缓优先级表 `_HOLD_PRIORITY`） | 待 M4 | 同上、`tests/test_locked_cases.py`（病例2） |
+| E1-B03 | 预评估：分型存疑暂缓 | OUT-E1-HOLD-TYPE | 同上 | 待 M4 | 同上 |
+| E1-B04 | 预评估：治疗背景不足暂缓 | OUT-E1-HOLD-DATA | 同上 | 待 M4 | 同上 |
+| E1-B05 | 预评估：当前不启动 | OUT-E1-NOSTART | 同上（`_not_start`） | 待 M4 | 同上 |
+| E2-B01 | 完整评估：启动＋血糖稳定 | OUT-E2-STABLE | `services/full_assessment.py` | 待 M4 | `tests/test_services_e1_e2.py` |
+| E2-B02 | 完整评估：启动＋缓解诱导 | OUT-E2-INDUCTION | 同上 | 待 M4 | 同上 |
+| E2-B03 | 完整评估：暂缓补充资料 | OUT-E2-HOLD | 同上 | 待 M4 | 同上 |
+| E2-B04 | 完整评估：当前不启动 | OUT-E2-NOSTART | 同上 | 待 M4 | 同上 |
+| E3-B01 | 复评：继续当前阶段 | OUT-E3-CONTINUE | `services/phase_review.py::_routine_action` | 待 M4 | `tests/test_services_e3_obs.py` |
+| E3-B02 | 复评：调整方案或目标 | OUT-E3-ADJUST | 同上 | 待 M4 | 同上 |
+| E3-B03/B04 | 复评：阶段互转（医生确认） | OUT-E3-SWITCH | 同上 | 待 M4 | 同上 |
+| E3-B05 | 复评：结束主动管理 | OUT-E3-END | 同上 | 待 M4 | 同上 |
+| E3-B06 | 复评：治疗下达标仍用获益药 | OUT-E3-ON-TREATMENT | `phase_review.py`（分支表 `domain/branches.py`） | 待 M4 | 同上、`test_locked_cases.py`（病例3） |
+| E3-B07 | 复评：停最后一种药 → 自动观察期 | OUT-E3-OBS-ENTER | 同上 + `utils/date_utils.py::compute_earliest_judge_date` | 待 M4 | 同上、`test_locked_cases.py`（病例1） |
+| E3-B08 | 复评：明显血糖失控 → 血糖稳定 | OUT-E3-ADJUST | 同上（优先级最高） | 待 M4 | 同上 |
+| A1-B01 | 观察期：进入与最早判定日计算 | — | `services/observation.py`、`utils/date_utils.py` | 待 M4 | `tests/test_services_e3_obs.py`、`tests/test_date_utils.py` |
+| A1-B02 | 观察期：未到期提示 | OUT-A1-WAIT | `observation.py::get_observation_status` | 待 M4 | 同上 |
+| A1-B03 | 观察期：到期开放判定 | OUT-A1-DUE | 同上 | 待 M4 | 同上 |
+| A1-B04 | 观察期：因高血糖退出 | OUT-A1-RESTART-HIGH | `observation.py::evaluate_medication_restart` | 待 M4 | 同上 |
+| A1-B05 | 观察期：因获益用药退出 | OUT-A1-RESTART-BENEFIT | 同上 | 待 M4 | 同上 |
+| E4-B01 | 判定：未到期阻断 | OUT-E4-NOT-DUE | `services/remission_judge.py::check_remission` | 待 M4 | `tests/test_services_e4_e5.py` |
+| E4-B02 | 判定：仍用药阻断 | OUT-E4-ON-DRUG | 同上 | 待 M4 | 同上 |
+| E4-B03 | 判定：客观条件核对 | OUT-E4-OBJECTIVE-MET | 同上（`_objective_conditions`） | 待 M4 | 同上、`test_locked_cases.py` |
+| E4-B04 | 判定：医生确认缓解 | OUT-E4-CONFIRMED | `remission_judge.py::confirm_remission` | 待 M4 | 同上 |
+| E4-B05 | 判定：暂不确认 → 定向复核 | OUT-E4-UNCERTAIN | 同上 | 待 M4 | 同上 |
+| E4-B06 | 判定：未达标 → 返回事件3 | OUT-E4-NOT-MET | `check_remission` | 待 M4 | 同上 |
+| E4-B07 | 判定：不可解释 → 复核（F041=否 返回 ST20） | OUT-E4-UNCERTAIN | `check_remission` | 待 M4 | 同上 |
+| E5-B01 | 缓解后：维持 | OUT-E5-MAINTAIN | `services/post_remission.py` | 待 M4 | 同上 |
+| E5-B02 | 缓解后：风险上升 | OUT-E5-RISK | 同上 | 待 M4 | 同上 |
+| E5-B03 | 缓解后：获益用药不可评价 | OUT-E5-UNEVALUABLE | 同上 | 待 M4 | 同上 |
+| E5-B04 | 缓解后：缓解终止 → 返回事件3 | OUT-E5-END | 同上 | 待 M4 | 同上 |
+| E5-B05 | 缓解后：默认随访计划 | OUT-E5-FOLLOWUP | `services/defaults.py::next_followup_date` | 待 M4 | 同上、`tests/test_locked_cases.py` |
+| SYS-E1-CLOSE | 兜底提示：分型复核为其他类型时关闭本路径（非锁定临床模板） | SYS-E1-CLOSE | `domain/transitions.py`（ST10→ST99） | 待 M4 | `tests/test_state_machine.py`、`test_locked_cases.py`（病例2） |
+| SYS-E5-REVIEW | 兜底提示：缓解后血糖暂不能解释时保留观察（非锁定临床模板） | SYS-E5-REVIEW | `post_remission.py`、`domain/transitions.py`（ST60 自环） | 待 M4 | `tests/test_services_e4_e5.py` |
 
 ---
 
@@ -52,9 +54,10 @@
 
 | 项目 | 位置 | 说明 |
 | --- | --- | --- |
-| 状态与名称 | `backend/app/domain/states.py`（M3 建立） | 9 个状态，中文名称供前台使用 |
-| 合法转换表 | `backend/app/domain/transitions.py`（M3 建立） | 每笔转换含 rule_id、必需字段、副作用、模板 |
-| 转换校验 | `validate_transition()` | 所有跳转必须经过；非法跳转返回自然语言原因 |
+| 状态与名称 | `backend/app/domain/states.py` ✅ M3 已建立 | 9 个状态，中文名称供前台使用；未知状态返回"未知状态"而非代码 |
+| 合法转换表 | `backend/app/domain/transitions.py` ✅ M3 已建立 | 每笔转换含 rule_id、必需字段、副作用、模板 |
+| 转换校验 | `transitions.validate_transition()` | 所有服务跳转均经过；非法跳转返回自然语言原因 |
+| 无出口检查 | `transitions.dead_end_states()` | 测试断言除终态 ST99 外无死端（`test_state_machine.py`） |
 | 矩阵一致性 | `_SPEC/03` 状态出口矩阵 | 与本表逐条对应 |
 
 ---
@@ -63,9 +66,9 @@
 
 | 位置 | 说明 |
 | --- | --- |
-| `backend/app/domain/branches.py`（M3 建立） | 阶段复评 8 分支的显式优先级表 |
+| `backend/app/domain/branches.py` ✅ M3 已建立 | 阶段复评 4 条分支的显式优先级表（失控 > 治疗下达标 > 停药 > 常规） |
+| `branches.resolve_branch()` ✅ M3 已建立 | 返回生效分支 + **被忽略分支与原因**；互斥冲突直接报错 |
 | `GET /api/domain/branches`（M4 建立） | 前端按优先级渲染，禁止前后端各写一套 |
-| 静默覆盖禁令 | 高优先级分支覆盖低优先级分支时，响应必须返回"被忽略的分支与原因" |
 
 ---
 
@@ -73,8 +76,8 @@
 
 | 项目 | 位置 | 说明 |
 | --- | --- | --- |
-| 模板正文 | `backend/app/domain/templates.py`（M3 建立） | 30 个 `OUT-*` + 2 个 `SYS-*`，共 32 条锁定文案 |
-| 模板冻结测试 | `backend/tests/test_templates_frozen.py` | 校验模板 ID 集合与正文一致；改动即失败 |
+| 模板正文 | `backend/app/domain/templates.py` ✅ M3 已建立 | 30 个 `OUT-*` + 2 个 `SYS-*`，共 32 条锁定文案 |
+| 模板冻结测试 | `backend/tests/test_templates_frozen.py` ✅ M3 已建立 | **与甲方原件逐字比对**：从 `_DEV/甲方材料/md派生/临床流程实现表_输出模板.md` 解析出 30 条正文，与代码逐字断言；任何改写立即失败 |
 | 计数口径 | `_SPEC/04` 第三节 | V0.1 文档写"34 个"有误，V1.0 更正为 32 条（见 `_SPEC/06` V1.0-Q-01） |
 
 ---
@@ -83,11 +86,11 @@
 
 | 规则 | 位置 | 说明 |
 | --- | --- | --- |
-| 日历月加法 | `backend/app/utils/date_utils.py::add_months_clamped`（M3 建立） | 钳位到目标月最后一天（8月31日+3月=11月30日） |
-| 最早可判定日期 F040 | 观察期服务 | MAX(停药+3 月；生活方式+6 月〔如适用〕；手术+3 月〔如适用〕) |
-| 复评默认间隔 | `services/defaults.py::REVIEW_INTERVAL_WEEKS = 12` | 两阶段一致，唯一来源，禁止散落硬编码 |
-| 随访节奏 | 缓解后复评服务 | 第 1 年每 6 个月；第 2 年每 6 个月；满 2 年后每年 |
-| 时间注入 | `core/clock.py`（M1 建立） | 服务层不读系统时间，`today` 由调用方注入 |
+| 日历月加法 | `backend/app/utils/date_utils.py::add_months_clamped` ✅ M3 已建立 | 钳位到目标月最后一天（8月31日+3月=11月30日）；含闰年二月用例 |
+| 最早可判定日期 F040 | `date_utils.py::compute_earliest_judge_date` ✅ M3 已建立 | MAX(停药+3 月；生活方式+6 月〔如适用〕；手术+3 月〔如适用〕)；空缺锚点不参与 |
+| 复评默认间隔 | `services/defaults.py::REVIEW_INTERVAL_WEEKS = 12` ✅ M3 已建立 | 两阶段一致，唯一来源，禁止散落硬编码 |
+| 随访节奏 | `defaults.py::next_followup_date` ✅ M3 已建立 | 第 6/12/18/24 个月，满 2 年后按年顺延 |
+| 时间注入 | `core/clock.py` ✅ M1 已建立 | 服务层不读系统时间，`today` 由调用方注入 |
 
 ---
 
@@ -95,11 +98,11 @@
 
 | 编号 | 决定 | 位置 |
 | --- | --- | --- |
-| IMP-1 | F001=否 → 预评估"当前不启动"；F001=待确认 → 分型存疑暂缓 | 预评估服务 |
-| IMP-2 | E3-B06 由"录入血糖 + 医生确认已达非糖尿病范围 + F053/F054"触发，无自动阈值 | 阶段复评服务 |
-| IMP-3 | 缓解确认守卫：确认前必须存在 E4-B03"客观满足"事件 | 缓解判定接口 |
-| IMP-4 | 急性安全后快速建档入口：最近事件须为 E1-B02 才可用 | 预评估接口 |
-| IMP-5 | 关闭路径入口：最近事件须为 E1-B03 才可用 | 预评估接口 |
+| IMP-1 | F001=否 → 预评估"当前不启动"；F001=待确认 → 分型存疑暂缓 | `services/pre_assessment.py` ✅ M3 |
+| IMP-2 | E3-B06 由"录入血糖 + 医生确认已达非糖尿病范围 + F053/F054"触发，无自动阈值 | `services/phase_review.py` ✅ M3 |
+| IMP-3 | 缓解确认守卫：确认前必须存在 E4-B03"客观满足"事件 | 接口层守卫，待 M4 |
+| IMP-4 | 急性安全后快速建档入口：最近事件须为 E1-B02 才可用 | 接口层守卫，待 M4 |
+| IMP-5 | 关闭路径入口：最近事件须为 E1-B03 才可用 | 接口层守卫，待 M4 |
 | IMP-6 | 账号用于可追溯性，不作为安全边界（`_SPEC/06` V1.0-Q-03） | 账号模块 |
 | IMP-7 | 提醒不做后台调度，登录与打开工作台时计算（`_SPEC/06` V1.0-Q-04） | 工作台接口 |
 | IMP-8 | 依据检索只给出处、不给临床建议（`_SPEC/07` AD-07） | 依据模块 |
@@ -119,3 +122,4 @@
 | 版本 | 日期 | 修订内容 |
 | --- | --- | --- |
 | v1.0 | 2026-09-19 | 自 V0.1 继承规则清单并更正模板计数（34 → 32 条）；新增分支优先级、账号定位、依据检索三项登记；实现位置列待 M3/M4 回填 |
+| v1.0.1 | 2026-09-20 | M3 完成回填：32 条规则全部指向服务层实现与测试文件；新增"模板与甲方原件逐字比对"说明；状态机、分支优先级、日期计算、IMP-1/IMP-2 标记为已落地；API 列仍待 M4 |
