@@ -40,7 +40,10 @@ target-version = "py313"
 [tool.ruff.lint]
 # 规则取舍：保留常规检查，允许中文注释与中文文档字符串
 select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]
+ignore = [
+    "E501",  # 行长：中文注释与规则表格行天然较长，交由编辑器折行处理
+    "B008",  # FastAPI 依赖注入的标准写法就是 Depends(...) 作为参数默认值，属该规则的已知误报
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

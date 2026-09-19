@@ -23,6 +23,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
+from app.api.router import api_router
 from app.config import get_settings
 from app.core.exceptions import EtmmsError
 from app.core.logging import configure_logging
@@ -54,6 +55,9 @@ app = FastAPI(
     description="门诊医生使用的 2 型糖尿病缓解管理流程工具：系统负责计算与提醒，医生负责医学决定。",
     lifespan=lifespan,
 )
+
+# 注册业务路由（账号、患者档案；临床流程接口在 M4 接入）
+app.include_router(api_router)
 
 
 @app.exception_handler(EtmmsError)

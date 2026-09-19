@@ -52,6 +52,18 @@
 > 因序号 30 的历史重写而失效。重写后的等价提交为：M0 基线 `e217f46`、ACCESS 补记 `3932167`、M1 工程基线 `52d1902`。
 > 三笔提交的**内容**与重写前一致，仅去掉了甲方材料与依据 PDF。
 
+## 二之二、M2 阶段行为（2026-09-20）
+
+| 序号 | 时间 | 行为 | 对象 | 权限模式 | 备注 |
+| --- | --- | --- | --- | --- | --- |
+| 34 | 2026-09-20 | 推送前置核查与历史清理后续（见序号 29–33） | — | — | Lifan 已自行在 GitHub 创建仓库 `GuLifan/t2dm-remission-manager`（Private）并完成首次推送。 |
+| 35 | 2026-09-20 | 写入账号安全底座 | `app/core/security.py`（scrypt 哈希、HMAC 会话令牌、密钥落盘） | workspace-write | 仅用标准库；文件头注明"可追溯性，非安全边界"的定位。 |
+| 36 | 2026-09-20 | 写入数据访问层与接口层 | `repository/{users,patients,events,audit}.py`、`api/{dependencies,auth,patients,router}.py`、`models/schemas.py`；扩展 `models/user.py` | workspace-write | 事务边界在接口层；事件仓储不提供更新/删除接口。 |
+| 37 | 2026-09-20 | **提权**生成并执行第二个数据库迁移 | `migrations/versions/375fb4767e0a_*.py`；`uv run alembic upgrade head` | require_escalated | 新增 `failed_login_count`、`locked_until` 两列；已在开发库执行并核对表结构。 |
+| 38 | 2026-09-20 | 写入 M2 测试 | `tests/{test_security,test_auth_api,test_patients_api}.py`；更新 `tests/conftest.py`、`tests/test_smoke.py` | workspace-write | 测试覆盖密码/令牌、登录链路与锁定、建档与审计；后端测试由 3 项增至 24 项。 |
+| 39 | 2026-09-20 | 运行测试与静态检查（提权） | `uv run pytest -q`（24 passed）、`uv run ruff check`（全绿） | require_escalated | 修正一处新增非空列导致的既有测试失败；按 FastAPI 惯例在 pyproject 忽略 B008 并注明理由。 |
+| 40 | 2026-09-20 | 更新文档并提交 M2 | `CHANGELOG.md`、`_SPEC/08`、本文件 | workspace-write + git | M2 收尾提交并推送至 `origin/develop`。 |
+
 ---
 
 ## 二、当前授权范围（Lifan 授予，2026-09-19）

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -35,6 +35,9 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(16), default="doctor")
     # 是否启用（停用后不可登录，历史事件保留）
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # 连续登录失败次数与锁定截止时间：基础防护，避免被反复猜密码
+    failed_login_count: Mapped[int] = mapped_column(Integer, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # 创建时间与最近登录时间
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

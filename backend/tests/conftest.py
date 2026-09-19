@@ -51,3 +51,36 @@ def db_session():
         yield session
     finally:
         session.close()
+
+
+# ===== 测试用固定账号：满足密码长度要求，且与真实数据无关 =====
+TEST_DOCTOR = {
+    "username": "doctor_test",
+    "display_name": "测试医生",
+    "password": "Test-Passw0rd",
+}
+
+
+@pytest.fixture(scope="session")
+def doctor(client: TestClient) -> dict:
+    """确保存在一个医生账号，并返回其登录态。
+
+    首次运行时走"引导创建"接口，之后走普通登录——两条路径都在测试覆盖范围内。
+
+    返回:
+        dict: {"headers": 认证头, "user": 账号信息}
+    """
+    status = client.get("/api/auth/status").json()
+    if status["needs_bootstrap"]:
+        response = client.post("/api/auth/bootstrap", json=TEST_DOCTOR)
+    else:
+        response = client.post(
+            "/api/auth/login",
+            json={"username": TEST_DOCTOR["username"], "password": TEST_DOCTOR["password"]},
+        )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    return {
+        "headers": {"Authorization": f"Bearer {body['token']}"},
+        "user": body["user"],
+    }

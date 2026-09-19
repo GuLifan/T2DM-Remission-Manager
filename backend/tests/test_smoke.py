@@ -47,8 +47,10 @@ def test_sqlite_foreign_keys_enabled(client, db_session) -> None:
     # 先准备一条账号记录作为操作者
     db_session.execute(
         text(
-            "INSERT INTO users (username, display_name, password_hash, role, is_active, created_at) "
-            "VALUES ('t_doctor', '测试医生', 'x', 'doctor', 1, '2026-09-20 09:00:00')"
+            # failed_login_count 为 NOT NULL，必须给出；locked_until 允许为空
+            "INSERT INTO users (username, display_name, password_hash, role, is_active, "
+            "failed_login_count, created_at) "
+            "VALUES ('t_doctor', '测试医生', 'x', 'doctor', 1, 0, '2026-09-20 09:00:00')"
         )
     )
     db_session.commit()
