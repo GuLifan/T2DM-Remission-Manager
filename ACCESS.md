@@ -42,6 +42,15 @@
 | 26 | 2026-09-19 | 运行检查与构建（提权） | 后端 `ruff check`（全绿）、`pytest`（3 passed）；前端 `npm run build`（通过）、`npm test`（5 passed）、`npm run lint`（无告警）；`python scripts/check_docs.py`（3/3 通过） | require_escalated | 自查过程中发现并删除零使用 Token `--etmms-font-mono`。 |
 | 27 | 2026-09-19 | **提权**启动后端服务并截图验证 | 后端 127.0.0.1:8080；浏览器截图 3 张（M1 界面） | require_escalated | 验证 Chrome/Material 3 视觉落地；截图过程发现"行式设置项控件列被裁切"缺陷并已修正；服务已停止，端口已释放。 |
 | 28 | 2026-09-19 | 更新文档并提交 M1 | `UI.md`（校准记录 + 附录 B）、`_SPEC/08`（M1 过门结果）、`CHANGELOG.md`、本文件 | workspace-write + git | M1 收尾提交见 git log。 |
+| 29 | 2026-09-20 | GitHub 推送前置核查（只读 + 联网） | 本地 git 远程/分支/账号配置、`gh` 可用性、代理配置与端口、仓库体积；联网探测 `github.com` / `api.github.com` / `gitee.com` | 只读 + require_escalated（联网探测） | 结果：无远程、无 gh、无代理配置；`github.com` 可达（HTTP 200，约 8.7 秒）、本机 7890 端口有代理在监听；仓库 `.git` 6.8 MB（其中甲方材料约 7 MB）。 |
+| 30 | 2026-09-20 | **提权重写 Git 历史，移除甲方材料与医学依据** | `git filter-branch --index-filter`（按路径清单移除 `_DEV/甲方材料/原件`、`_DEV/医学依据`）+ `git gc --prune=now` | require_escalated | 按 Lifan 决策（仓库不含甲方材料与指南 PDF）。**副作用：filter-branch 重写后工作区中这 6 个文件被一并删除**；清理后已确认历史中不再包含任何材料文件，仓库体积由 6.8 MB 降至 **0.3 MB**。 |
+| 31 | 2026-09-20 | 从原始位置恢复被删除的材料（读工作区外 + 写工作区） | 自 `C:\Users\lifan\Desktop\CGM\` 与 `C:\Users\lifan\Desktop\` 复制 3 份甲方原件与 3 份依据 PDF 回 `_DEV/` | 只读外部 + workspace-write | 6 个文件全部恢复并逐一核对大小（0.04–5.90 MB）；桌面源文件保持原样未动。**这是一次由我引发的意外删除，已完整恢复，无数据丢失。** |
+| 32 | 2026-09-20 | 更新忽略规则与目录说明 | `.gitignore`（新增 `_DEV/甲方材料/原件/`、`_DEV/医学依据/`）、`_DEV/README.md`（材料本地保留、新环境获取方式） | workspace-write | 已用 `git check-ignore -v` 验证两条规则生效。 |
+| 33 | 2026-09-20 | 设置中文文件名显示 | `git config core.quotepath false`（仅本仓库） | 本地配置 | 改善 `git status`/`git log` 中中文文件名的可读性。 |
+
+> **提交哈希变更说明（2026-09-20）**：序号 14、15、28 中记录的提交哈希（`784da79` / `a31783c` / `96dce58`）
+> 因序号 30 的历史重写而失效。重写后的等价提交为：M0 基线 `e217f46`、ACCESS 补记 `3932167`、M1 工程基线 `52d1902`。
+> 三笔提交的**内容**与重写前一致，仅去掉了甲方材料与依据 PDF。
 
 ---
 
