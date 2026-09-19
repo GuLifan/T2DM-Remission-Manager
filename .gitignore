@@ -1,0 +1,43 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 虚拟环境：一律建在项目内，禁止提交（AGENTS 约定：不改动全局 Python 环境）
+backend/.venv/
+.venv/
+
+# ===== Node / 前端 =====
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# ===== 数据库与运行时数据（含患者数据，禁止入库）=====
+data/runtime/
+*.db
+*.db-wal
+*.db-shm
+
+# ===== 依据资料检索索引（可由脚本重建，不入库）=====
+data/evidence/index/
+
+# ===== 打包产物 =====
+build/
+dist/
+release/
+
+# ===== 编辑器与系统 =====
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+
+# ===== 临时文件 =====
+*.tmp
+*.log
+
+# 说明：`_DEV/` 下的甲方材料原件（.docx/.xlsx/.pdf）为项目依据，随仓库一起版本化，
+# 便于任何会话、任何工具都能拿到同一份依据；它们体量约 7 MB，可接受。

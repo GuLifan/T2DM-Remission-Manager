@@ -1,0 +1,21 @@
+# 统一换行符：文本一律 LF，批处理文件保留 CRLF
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制文件不做换行符转换与差异比对
+*.pdf  binary
+*.docx binary
+*.xlsx binary
+*.db   binary
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.exe  binary
+
+# 语言统计与差异显示
+*.md   text
+*.py   text
+*.ts   text
+*.tsx  text
+*.css  text
