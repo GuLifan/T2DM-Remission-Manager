@@ -1,0 +1,81 @@
+/**
+ * 文件名称：base.css
+ * 所属层级：全局样式（styles）
+ * 功能说明：全局基础样式——重置、排版、等宽数字工具类、焦点可见性、无障碍偏好。
+ *
+ * 修改历史：
+ *   - 2026-09-20  v1.0  M1 初始实现
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--etmms-surface-container-low);
+  color: var(--etmms-on-surface);
+  font-family: var(--etmms-font-family);
+  font-size: var(--etmms-text-body);
+  line-height: var(--etmms-line-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 标题层级（UI.md 2.4） */
+h1 {
+  font-size: var(--etmms-text-page-title);
+  font-weight: var(--etmms-weight-regular);
+  line-height: var(--etmms-line-tight);
+  margin: 0;
+}
+
+h2 {
+  font-size: var(--etmms-text-section-title);
+  font-weight: var(--etmms-weight-medium);
+  line-height: var(--etmms-line-normal);
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+/* 数值一律等宽对齐（UI.md 2.4） */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 焦点可见：键盘可达性的前提（UI.md 8.2） */
+:focus-visible {
+  outline: 2px solid var(--etmms-primary);
+  outline-offset: 2px;
+}
+
+/* 屏幕阅读器专用文本 */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 尊重系统的"减少动态效果"偏好（UI.md 2.7） */
+@media (prefers-reduced-motion: reduce) {
+  /* 此处使用 !important 的原因：必须覆盖任意组件自带的过渡，
+     属于"无障碍覆盖第三方/局部样式"的允许场景（见 UI.md 7.3）。 */
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

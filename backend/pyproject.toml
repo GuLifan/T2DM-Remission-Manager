@@ -1,0 +1,51 @@
+[project]
+name = "etmms-backend"
+version = "1.0.0"
+description = "早期2型糖尿病缓解管理软件（ETMMS）后端：临床流程决策支持"
+readme = "README.md"
+# 版本下限 3.13：3.13 与 3.14 均可（打包兼容性在 M1 实测后锁定，见 _SPEC/08 M1）
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.0.30",
+    "alembic>=1.13",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    # 医学依据 PDF 文本抽取（依据检索库用；不使用 OCR）
+    "pypdf>=5.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "httpx>=0.27",
+    # 便携版打包（M7 使用；M1 先验证与 Python 版本的兼容性）
+    "pyinstaller>=6.10",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+# 规则取舍：保留常规检查，允许中文注释与中文文档字符串
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/main.py"]

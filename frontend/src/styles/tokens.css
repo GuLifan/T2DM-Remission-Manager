@@ -1,0 +1,97 @@
+/**
+ * 文件名称：tokens.css
+ * 所属层级：全局样式（styles）
+ * 功能说明：Design Token 的唯一来源，逐字对应根目录 `UI.md` 第 2 节。
+ *   ⚠️ 任何 Token 的新增、修改、删除都必须先改 `UI.md` 与 `mapping.md`，
+ *      再改本文件；未使用的 Token 视为缺陷（见 UI.md 第 6 节自查机制）。
+ *
+ * 修改历史：
+ *   - 2026-09-20  v1.0  M1 初始实现（对应 UI.md v1.0）
+ */
+
+:root {
+  /* ===== 品牌色（Google 蓝）===== */
+  --etmms-primary: #0b57d0;
+  --etmms-on-primary: #ffffff;
+  --etmms-primary-container: #d3e3fd;
+  --etmms-on-primary-container: #041e49;
+
+  /* ===== 表面层 ===== */
+  --etmms-surface: #ffffff;
+  --etmms-surface-container-low: #f8fafd;
+  --etmms-surface-container: #f0f4f9;
+  --etmms-surface-container-high: #e9eef6;
+
+  /* ===== 文字层 ===== */
+  --etmms-on-surface: #1f1f1f;
+  --etmms-on-surface-variant: #444746;
+  --etmms-on-surface-disabled: #8e918f;
+
+  /* ===== 描边与分割线 ===== */
+  --etmms-outline: #747775;
+  --etmms-outline-variant: #c4c7c5;
+
+  /* ===== 语义色（仅表达临床状态）===== */
+  --etmms-success: #146c2e;
+  --etmms-success-container: #c4eed0;
+  --etmms-on-success-container: #072711;
+  --etmms-warning: #b06000;
+  --etmms-warning-container: #feefc3;
+  --etmms-on-warning-container: #3e2c00;
+  --etmms-error: #b3261e;
+  --etmms-error-container: #f9dedc;
+  --etmms-on-error-container: #410e0b;
+
+  /* ===== 状态层 ===== */
+  --etmms-state-hover: rgba(31, 31, 31, 0.08);
+  --etmms-state-focus: rgba(11, 87, 208, 0.12);
+  --etmms-state-pressed: rgba(31, 31, 31, 0.12);
+
+  /* ===== 圆角 ===== */
+  --etmms-radius-xs: 4px;
+  --etmms-radius-sm: 8px;
+  --etmms-radius-md: 12px;
+  --etmms-radius-full: 999px;
+
+  /* ===== 间距（4px 基数）===== */
+  --etmms-space-1: 4px;
+  --etmms-space-2: 8px;
+  --etmms-space-3: 12px;
+  --etmms-space-4: 16px;
+  --etmms-space-5: 24px;
+  --etmms-space-6: 32px;
+  --etmms-space-7: 40px;
+
+  /* ===== 字体与字号 ===== */
+  --etmms-font-family: Roboto, "Google Sans", "Segoe UI", "PingFang SC", "Microsoft YaHei",
+    "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+  --etmms-text-page-title: 24px;
+  --etmms-text-section-title: 16px;
+  --etmms-text-body: 14px;
+  --etmms-text-label: 14px;
+  --etmms-text-caption: 12px;
+  --etmms-weight-regular: 400;
+  --etmms-weight-medium: 500;
+  --etmms-weight-semibold: 600;
+  --etmms-line-tight: 1.33;
+  --etmms-line-normal: 1.43;
+
+  /* ===== 层级与描边 ===== */
+  --etmms-border-width: 1px;
+  --etmms-elevation-0: none;
+  --etmms-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --etmms-elevation-2: 0 2px 6px rgba(0, 0, 0, 0.1);
+
+  /* ===== 尺寸常量 ===== */
+  --etmms-sidebar-width: 240px;
+  --etmms-content-max: 960px;
+  --etmms-control-height: 40px;
+  --etmms-button-height: 36px;
+  --etmms-row-height: 48px;
+  --etmms-appbar-height: 56px;
+  --etmms-drawer-width: 420px;
+
+  /* ===== 动效 ===== */
+  --etmms-motion-fast: 120ms cubic-bezier(0.2, 0, 0, 1);
+  --etmms-motion-base: 200ms cubic-bezier(0.2, 0, 0, 1);
+}

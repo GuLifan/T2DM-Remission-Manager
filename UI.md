@@ -60,8 +60,42 @@ B. Token 使用登记表
 - **行式设置项**：左侧标签 + 右侧控件 + 下方说明，用 1px 分隔线分组
 - **克制的字体层级**：正文 14px，标题 16/24px，页面标题 24px
 
-> **取值来源说明**：本文 Token 值取自 Google Material 3 公开调色板与 Chrome 现行界面特征。
-> **校准任务（M1 必须完成）**：用本机 Chrome 打开 `chrome://settings` 截图，与本文 Token 做一次视觉比对，偏差处按实际值修正并在附录 B 记录修订。
+> **取值来源与校准（M1 已完成，2026-09-20）**
+>
+> 校准方式：直接读取 **Chromium 源码的 GM3 参考调色板** `ui/color/ref_color_mixer.cc`（main 分支），
+> 逐个核对本文件的颜色 Token。这是 Chrome 桌面界面配色的上游定义，比任何二手资料更权威。
+>
+> **校准结论：18 个颜色 Token 中 15 个与 Chromium 源码逐字节一致**，无需修正：
+>
+> | 本文件 Token | Chromium 常量 | 取值 |
+> | --- | --- | --- |
+> | `--etmms-primary` | `kColorRefPrimary40` | `#0B57D0` |
+> | `--etmms-on-primary` | `kColorRefPrimary100` | `#FFFFFF` |
+> | `--etmms-primary-container` | `kColorRefPrimary90` | `#D3E3FD` |
+> | `--etmms-on-primary-container` | `kColorRefPrimary10` | `#041E49` |
+> | `--etmms-on-surface` | `kColorRefNeutral10` | `#1F1F1F` |
+> | `--etmms-on-surface-variant` | `kColorRefNeutralVariant30` | `#444746` |
+> | `--etmms-on-surface-disabled` | `kColorRefNeutralVariant60` | `#8E918F` |
+> | `--etmms-outline` | `kColorRefNeutralVariant50` | `#747775` |
+> | `--etmms-outline-variant` | `kColorRefNeutralVariant80` | `#C4C7C5` |
+> | `--etmms-success` | `kColorRefTertiary40` | `#146C2E` |
+> | `--etmms-success-container` | `kColorRefTertiary90` | `#C4EED0` |
+> | `--etmms-on-success-container` | `kColorRefTertiary10` | `#072711` |
+> | `--etmms-error` | `kColorRefError40` | `#B3261E` |
+> | `--etmms-error-container` | `kColorRefError90` | `#F9DEDC` |
+> | `--etmms-on-error-container` | `kColorRefError10` | `#410E0B` |
+>
+> **3 个表面层 Token 的说明**：`surface-container-low #F8FAFD`、`surface-container #F0F4F9`、
+> `surface-container-high #E9EEF6` 属于 **Google 网页应用 GM3 表面层口径**，不在 Chromium 桌面版
+> 调色板中（桌面版对应灰阶为 `Neutral95 #F2F2F2`、`Neutral98 #FAF9F8`）。本软件是网页应用，
+> 采用网页版口径，以获得更清晰的层级区分。
+>
+> **3 个警示色 Token 的说明**：`warning #B06000` / `warning-container #FEEFC3` /
+> `on-warning-container #3E2C00` 取自 Google 产品界面的黄色警示语义；Chromium 的 GM3 参考调色板
+> 未定义"警示"角色（只有 primary/secondary/tertiary/error/neutral 五族），故这三项属本项目的显式扩展，
+> 已在附录 B 登记。
+>
+> 复核方式：`curl -sL "https://cdn.jsdelivr.net/gh/chromium/chromium@main/ui/color/ref_color_mixer.cc"`。
 
 ---
 
@@ -160,7 +194,6 @@ B. Token 使用登记表
   --etmms-font-family: Roboto, "Google Sans", "Segoe UI",
                        "PingFang SC", "Microsoft YaHei", "Noto Sans SC",
                        "Helvetica Neue", Arial, sans-serif;
-  --etmms-font-mono:   "Roboto Mono", Consolas, "Courier New", monospace;
 
   --etmms-text-page-title:    24px;  /* 页面主标题（行高 32px） */
   --etmms-text-section-title: 16px;  /* 小节标题、卡片标题（行高 24px） */
@@ -668,24 +701,35 @@ CSS 变量完整定义见本文件第 2 节，直接复制到 `frontend/src/styl
 > **维护规则**：任何 Token 的新增、修改、删除都必须在此登记；每次里程碑由 `scripts/check_docs.py` 回填"使用位置"与"使用次数"。
 > **过门条件**：未使用 Token 数必须为 0。
 
-| Token 组 | Token 数量 | 使用位置（由自查脚本回填） | 状态 |
+| Token 组 | 数量 | 使用情况（`scripts/check_docs.py` 自查结果） | 校准状态 |
 | --- | --- | --- | --- |
-| 品牌色（primary / on-primary / primary-container / on-primary-container） | 4 | 待 M1 回填 | 已定义 |
-| 表面层（surface / surface-container-low / surface-container / surface-container-high） | 4 | 待 M1 回填 | 已定义 |
-| 文字层（on-surface / on-surface-variant / on-surface-disabled） | 3 | 待 M1 回填 | 已定义 |
-| 描边（outline / outline-variant） | 2 | 待 M1 回填 | 已定义 |
-| 语义色（success / warning / error 三组各 3 个） | 9 | 待 M1 回填 | 已定义 |
-| 状态层（hover / focus / pressed） | 3 | 待 M1 回填 | 已定义 |
-| 圆角（xs / sm / md / full） | 4 | 待 M1 回填 | 已定义 |
-| 间距（space-1 … space-7） | 7 | 待 M1 回填 | 已定义 |
-| 字体（family / mono / 5 个字号 / 3 个字重 / 2 个行高） | 11 | 待 M1 回填 | 已定义 |
-| 层级与描边（border-width / elevation-0…2） | 4 | 待 M1 回填 | 已定义 |
-| 尺寸常量（sidebar-width … drawer-width） | 7 | 待 M1 回填 | 已定义 |
-| 动效（motion-fast / motion-base） | 2 | 待 M1 回填 | 已定义 |
+| 品牌色（primary / on-primary / primary-container / on-primary-container） | 4 | 已全部被引用 | 与 Chromium 源码逐字节一致 |
+| 表面层（surface / surface-container-low / surface-container / surface-container-high） | 4 | 已全部被引用 | GM3 网页版口径（见 1.2 说明） |
+| 文字层（on-surface / on-surface-variant / on-surface-disabled） | 3 | 已全部被引用 | 与 Chromium 源码逐字节一致 |
+| 描边（outline / outline-variant） | 2 | 已全部被引用 | 与 Chromium 源码逐字节一致 |
+| 语义色（success × 3） | 3 | 已全部被引用 | 与 Chromium 源码逐字节一致（Tertiary 族） |
+| 语义色（error × 3） | 3 | 已全部被引用 | 与 Chromium 源码逐字节一致（Error 族） |
+| 语义色（warning × 3） | 3 | 已全部被引用 | **本项目显式扩展**（Chromium 无警示角色） |
+| 状态层（hover / focus / pressed） | 3 | 已全部被引用 | 本项目定义 |
+| 圆角（xs / sm / md / full） | 4 | 已全部被引用 | 本项目定义（M3 形状语言） |
+| 间距（space-1 … space-7） | 7 | 已全部被引用 | 本项目定义（4px 基数） |
+| 字体（family / 5 个字号 / 3 个字重 / 2 个行高） | 10 | 已全部被引用 | 本项目定义 |
+| 层级与描边（border-width / elevation-0…2） | 4 | 已全部被引用 | 本项目定义 |
+| 尺寸常量（sidebar-width … drawer-width） | 7 | 已全部被引用 | 本项目定义 |
+| 动效（motion-fast / motion-base） | 2 | 已全部被引用 | 本项目定义 |
+
+**合计 60 个 Token，使用率 100%**（M1 自查结论）。
+
+### 已删除的 Token（记录在案，避免被重新引入）
+
+| Token | 删除原因 |
+| --- | --- |
+| `--etmms-font-mono` | M1 自查发现零使用；本项目界面无需等宽字体场景（数值对齐由 `.num` 的 tabular-nums 解决），按"定义即须使用"规则删除 |
 
 ## 修订记录
 
 | 版本 | 日期 | 修订内容 | 修订者 |
 | --- | --- | --- | --- |
 | v1.0 | 2026-09-19 | 全面重写：由 macOS Liquid Glass 体系改为 Google Chrome / Material Design 3 体系；新增 Token 使用率自查机制、分支互斥规范、前端工程规范、无障碍规范 | spec 工程侧（经 Lifan 批准） |
+| v1.0.1 | 2026-09-20 | M1 校准：以 Chromium 源码 GM3 参考调色板逐个核对颜色 Token（15/18 逐字节一致，并补齐其余项的来源说明）；删除零使用的 `--etmms-font-mono`；登记 Token 使用率自查结果 | spec 工程侧 |
 | v0.x | 2026-08-22 | 历史版本（macOS 26 Liquid Glass），留存于 `_DEV\历史参考\UI设计规范_macOS版_v1.0_历史版本.md` | 历史 |

@@ -30,6 +30,18 @@
 | 14 | 2026-09-19 | **提权**初始化 Git 仓库并提交基线 | `ETMMS_V1.0\.git`；提交 `784da79`（docs: M0 规范基线）；分支 `main` | require_escalated（沙箱将 `.git` 设为只读，`git add` 被拒） | 提交内容：`.gitignore`、`.gitattributes`、`ACCESS.md`、`CHANGELOG.md`、`README.md`、`UI.md`、`mapping.md`、`_DEV/**`、`_SPEC/**`，共 32 个文件（含 7.0 MB 甲方原件与依据 PDF）。 |
 | 15 | 2026-09-19 | 只读完整性核对 | V0.1 工作区 `git status`；V1.0 文件清单 | 只读 | V0.1 仅存在本次工作**之前**已存在的 1 项未提交改动（`交付物\风险代码检查报告_v0.1.md`）；本次工作未删除、未修改 V0.1 任何内容。 |
 | 16 | 2026-09-19 | 写入与提交 ACCESS 补记（本次） | `ACCESS.md` | workspace-write + git | 补记序号 9–15 的行为；随后提交为 M0 收尾提交。 |
+| 17 | 2026-09-19 | **提权**创建开发分支 | `ETMMS_V1.0`：`git checkout -b develop`；查询 uv 可用 Python 版本 | require_escalated | 分支策略 `main`（基线）/ `develop`（日常开发）已就位。 |
+| 18 | 2026-09-19 | 写入后端工程与核心骨架 | `backend/pyproject.toml`、`README.md`、`app/{config,main}.py`、`app/core/{clock,logging,exceptions}.py`、`app/models/*`、`app/repository/{database,migrations}.py` | workspace-write | 分层与职责遵循 `_SPEC/07`；全部注释为简体中文。 |
+| 19 | 2026-09-19 | **提权**安装后端依赖（uv） | `uv sync --python 3.14` → `backend/.venv`（fastapi / uvicorn / sqlalchemy / alembic / pydantic / pypdf / pytest / ruff / pyinstaller 等 40+ 包） | require_escalated（网络 + uv 缓存在沙箱外） | 虚拟环境建在项目内，**未改动全局 Python**。耗时约 20 分钟（首次下载）。 |
+| 20 | 2026-09-19 | **提权**PyInstaller 兼容性实测 | 生成 `build/pyinstaller_smoke/`（临时冒烟工程，已被 .gitignore 排除），打包并运行成功 | require_escalated | 结论：PyInstaller 6.22.3 在 Python 3.14.4 上可用（含 sqlite3）；据此**锁定 Python 3.14**。 |
+| 21 | 2026-09-19 | **提权**生成并执行数据库迁移 | `migrations/`（env.py、script.py.mako）、`alembic.ini`、首个迁移 `7d4fbd959d06`；`uv run alembic upgrade head` | require_escalated | 过程中修正三处问题：`alembic.ini` 需纯 ASCII（GBK 读取）、env.py 需先建目录、mako 模板不能输出模块文档字符串。 |
+| 22 | 2026-09-19 | **提权**安装前端依赖（npm） | `frontend/node_modules`（React 19 / Vite / TypeScript / oxlint / vitest / testing-library / jsdom，共 110+ 包） | require_escalated（网络） | `package.json` 为手写（非脚手架生成），依赖版本经 npm 解析。 |
+| 23 | 2026-09-19 | 写入前端工程与组件库 | `frontend/`：配置文件、`src/styles/*`、`src/components/*`（14 个组件）、`src/pages/KitchenSink.tsx`（组件库自检页）、组件测试 2 份 | workspace-write | 零 inline style；全部样式取自 `tokens.css`。 |
+| 24 | 2026-09-19 | 写入工程脚本 | `scripts/dev.py`、`scripts/build.py`、`scripts/check_docs.py` | workspace-write | `check_docs.py` 为 Token 使用率与模板覆盖的自查门禁。 |
+| 25 | 2026-09-19 | **提权**联网获取 Chrome 配色权威来源 | 自 jsDelivr 镜像获取 Chromium 源码 `ui/color/ref_color_mixer.cc`（18.5 KB）至系统临时目录 | require_escalated（网络） | 用于校准 UI Token；`chromium.googlesource.com` 与 GitHub raw 在此网络不可达，gitee 镜像返回 403，最终 jsDelivr 可用。**仅为读取，未写入项目外任何位置。** |
+| 26 | 2026-09-19 | 运行检查与构建（提权） | 后端 `ruff check`（全绿）、`pytest`（3 passed）；前端 `npm run build`（通过）、`npm test`（5 passed）、`npm run lint`（无告警）；`python scripts/check_docs.py`（3/3 通过） | require_escalated | 自查过程中发现并删除零使用 Token `--etmms-font-mono`。 |
+| 27 | 2026-09-19 | **提权**启动后端服务并截图验证 | 后端 127.0.0.1:8080；浏览器截图 3 张（M1 界面） | require_escalated | 验证 Chrome/Material 3 视觉落地；截图过程发现"行式设置项控件列被裁切"缺陷并已修正；服务已停止，端口已释放。 |
+| 28 | 2026-09-19 | 更新文档并提交 M1 | `UI.md`（校准记录 + 附录 B）、`_SPEC/08`（M1 过门结果）、`CHANGELOG.md`、本文件 | workspace-write + git | M1 收尾提交见 git log。 |
 
 ---
 
