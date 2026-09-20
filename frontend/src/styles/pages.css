@@ -1,0 +1,212 @@
+/**
+ * 文件名称：pages.css
+ * 所属层级：全局样式（styles）
+ * 功能说明：页面级布局与业务区块样式。所有取值来自 tokens.css，
+ *   禁止出现非 Token 的颜色、间距、圆角（UI.md 第 5 节反模式清单）。
+ *
+ * 修改历史：
+ *   - 2026-09-20  v1.0  M5 初始实现
+ */
+
+/* ===================== 页面骨架 ===================== */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--etmms-surface-container-low);
+}
+
+.page__body {
+  flex: 1;
+  padding: var(--etmms-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--etmms-space-5);
+  max-width: var(--etmms-content-max);
+  width: 100%;
+}
+
+.page__subtitle {
+  font-size: var(--etmms-text-caption);
+  color: var(--etmms-on-surface-variant);
+}
+
+.page__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--etmms-space-3);
+  margin-top: var(--etmms-space-4);
+}
+
+/* 纵向堆叠（表单字段之间） */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--etmms-space-4);
+  margin-top: var(--etmms-space-4);
+}
+
+/* 两列表单栅格：窄屏自动回落为单列 */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--etmms-space-4);
+  margin-bottom: var(--etmms-space-4);
+}
+
+/* ===================== 登录页 ===================== */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--etmms-space-5);
+  background: var(--etmms-surface-container-low);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--etmms-space-3);
+}
+
+.login-title {
+  font-size: var(--etmms-text-page-title);
+  font-weight: var(--etmms-weight-medium);
+}
+
+.login-subtitle {
+  font-size: var(--etmms-text-body);
+  color: var(--etmms-on-surface-variant);
+}
+
+.login-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--etmms-space-4);
+}
+
+/* ===================== 表格（患者列表） ===================== */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  font-size: var(--etmms-text-caption);
+  font-weight: var(--etmms-weight-medium);
+  color: var(--etmms-on-surface-variant);
+  padding: var(--etmms-space-2) var(--etmms-space-3);
+  border-bottom: var(--etmms-border-width) solid var(--etmms-outline-variant);
+}
+
+.table td {
+  padding: var(--etmms-space-3);
+  border-bottom: var(--etmms-border-width) solid var(--etmms-outline-variant);
+  font-size: var(--etmms-text-body);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table__actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ===================== 键值列表（时间锚点等只读信息） ===================== */
+.kv {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.kv__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--etmms-space-4);
+  min-height: var(--etmms-row-height);
+  padding: var(--etmms-space-2) 0;
+  border-bottom: var(--etmms-border-width) solid var(--etmms-outline-variant);
+}
+
+.kv__row:last-child {
+  border-bottom: none;
+}
+
+.kv__key {
+  color: var(--etmms-on-surface-variant);
+}
+
+.kv__value {
+  font-weight: var(--etmms-weight-medium);
+  text-align: right;
+}
+
+/* ===================== 事件流水（管理记录与回看） ===================== */
+.event-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--etmms-space-2);
+}
+
+.event-item {
+  background: var(--etmms-surface);
+  border: var(--etmms-border-width) solid var(--etmms-outline-variant);
+  border-radius: var(--etmms-radius-sm);
+  padding: var(--etmms-space-3) var(--etmms-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--etmms-space-1);
+}
+
+.event-item__meta {
+  font-size: var(--etmms-text-caption);
+  color: var(--etmms-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+
+.event-item__text {
+  font-size: var(--etmms-text-body);
+}
+
+/* ===================== 分支说明（本次未生效的分支） ===================== */
+.branch-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--etmms-space-1);
+  margin-top: var(--etmms-space-3);
+  padding: var(--etmms-space-3) var(--etmms-space-4);
+  background: var(--etmms-surface-container);
+  border-radius: var(--etmms-radius-sm);
+}
+
+.branch-notes__title {
+  font-size: var(--etmms-text-caption);
+  font-weight: var(--etmms-weight-medium);
+  color: var(--etmms-on-surface-variant);
+}
+
+.branch-notes__item {
+  font-size: var(--etmms-text-caption);
+  color: var(--etmms-on-surface-variant);
+}
+
+/* ===================== 行内复选项（如"确认已达非糖尿病范围"） ===================== */
+.checkbox-line {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--etmms-space-2);
+  font-size: var(--etmms-text-body);
+  cursor: pointer;
+}

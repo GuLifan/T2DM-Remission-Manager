@@ -90,6 +90,20 @@
 | 55 | 2026-09-20 | 调整后端默认端口 8080 → **8088** | `backend/app/config.py`、`scripts/dev.py`、`frontend/vite.config.ts`（代理）、`README.md`、`backend/README.md`、`frontend/README.md`、`_SPEC/07` 配置表 | workspace-write | Lifan 指定：8080 已分配给本机其他开发任务。`_DEV/历史参考/` 中的旧文档保持原样（历史留存，不修改）。端口仍可用环境变量 `ETMMS_PORT` 覆盖。 |
 | 56 | 2026-09-20 | 停止旧端口服务并在新端口重启（提权） | 结束 8080 上的 ETMMS 后端进程（PID 16984，我此前启动）；在 **127.0.0.1:8088** 重新启动 | require_escalated | 核对结果：8088 `/api/health` 返回 ok、首页 200；8080 已释放且无监听。 |
 
+## 二之五、M5 阶段行为（2026-09-20）
+
+| 序号 | 时间 | 行为 | 对象 | 权限模式 | 备注 |
+| --- | --- | --- | --- | --- | --- |
+| 57 | 2026-09-20 | 写入前端接口层与类型 | `src/api/client.ts`、`src/api/endpoints.ts`、`src/types/index.ts`、`src/hooks/useAsync.ts` | workspace-write | 超时/取消/401 清理/幂等标识集中处理；类型与后端模式对齐。 |
+| 58 | 2026-09-20 | 写入页面与样式 | `src/pages/{LoginPage,PatientListPage,PatientWorkspacePage}.tsx`、`src/pages/flow/*.tsx`（8 个）、`src/styles/pages.css`、`src/App.tsx`、`src/main.tsx` | workspace-write | 零 inline style；`BrowserRouter` 上移至 main.tsx（修正 Router 上下文错误）。 |
+| 59 | 2026-09-20 | 写入前端测试 | `src/pages/LoginPage.test.tsx`、`src/pages/PatientWorkspacePage.test.tsx` | workspace-write | 用 fetch 桩验证登录引导、就地校验、导航禁用规则、回看只读、分支优先级渲染。 |
+| 60 | 2026-09-20 | 运行前端检查（提权） | `npm run build`（通过）、`npm test`（**10 passed / 4 files**）、`npm run lint`（无告警）、`python scripts/check_docs.py`（3/3） | require_escalated | Token 使用率仍为 100%。 |
+| 61 | 2026-09-20 | **真实浏览器端到端走查** | 在 127.0.0.1:8088 依次完成：创建首个账号 → 建档 → 重新发起预评估 → 提交预评估 → 提交完整评估 → 阶段复评页渲染 | 本机浏览器操作（经 Lifan 授权的运行查看请求） | 结果：状态流转正确（ST00→ST10→ST20→ST32）、复评日期按 12 周自动计算、事件流水逐条显示自然语言结论、分支按优先级渲染并列出"本次未生效"的分支。 |
+
+> **开发数据说明（2026-09-20）**：序号 61 的走查在开发数据库 `data/runtime/etmms.db` 中创建了
+> 演示账号（登录名 `doctor`）与一名演示患者（病历号 `MRN-DEMO-001`）。该数据库在 `.gitignore`
+> 排除的 `data/runtime/` 下，**不进入仓库**；如需干净环境，删除该文件并重启后端即可自动重建。
+
 ---
 
 ## 二、当前授权范围（Lifan 授予，2026-09-19）
