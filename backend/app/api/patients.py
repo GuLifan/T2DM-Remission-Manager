@@ -15,7 +15,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.core.exceptions import ConflictError, NotFoundError
+from app.api.flow_common import record_outcome
+from app.core.exceptions import BusinessRuleError, ConflictError, NotFoundError
+from app.domain import templates
+from app.domain.states import ST00, ST10
 from app.models.schemas import EventOut, EventPage, PatientCreateIn, PatientOut
 from app.models.user import User
 from app.repository import audit as audit_repo
@@ -91,3 +94,36 @@ def list_events(
     total = events_repo.count_events(db, patient_id)
     items = [EventOut.model_validate(item) for item in events_repo.list_events(db, patient_id, limit=limit, offset=offset)]
     return EventPage(total=total, items=items)
+
+
+@router.post("/{patient_id}/reopen", response_model=PatientOut)
+def reopen_pre_assessment(
+    patient_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PatientOut:
+    """从常规糖尿病综合管理重新发起 60 秒预评估（ST00 → ST10）。
+
+    为什么需要：锁定稿§11 规定"条件或意愿改变时可重新发起预评估"，
+    这是常规管理状态的合法出口；不构成新增临床节点。
+    """
+    patient = patients_repo.get_patient(db, patient_id)
+    if patient is None:
+        raise NotFoundError("未找到该患者档案。")
+    if patient.current_state != ST00:
+        raise BusinessRuleError(
+            "只有处于常规糖尿病综合管理的患者才能重新发起预评估。", code="WRONG_STATE"
+        )
+    source_state = patient.current_state
+    record_outcome(
+        db,
+        patient=patient,
+        operator=current_user,
+        source_state=source_state,
+        target_state=ST10,
+        rule_id="REOPEN",
+        template_id="SYS-ST00-REOPEN",
+        output_text=templates.render("SYS-ST00-REOPEN"),
+        payload=None,
+    )
+    return PatientOut.model_validate(patient)

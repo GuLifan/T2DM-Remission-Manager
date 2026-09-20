@@ -48,6 +48,19 @@ TRANSITIONS: tuple[Transition, ...] = (
     Transition("E1-B04", (ST10,), ST10, "OUT-E1-HOLD-DATA", ("f012_pre_tasks",), label="关键治疗背景不足暂缓"),
     Transition("E1-B05", (ST10,), ST00, "OUT-E1-NOSTART", label="当前不启动"),
     Transition("SYS-E1-CLOSE", (ST10,), ST99, "SYS-E1-CLOSE", label="分型复核为其他类型，关闭本路径"),
+    # 急性安全暂缓 + 医生确认已稳定化 → 快速建档直接进入血糖稳定阶段
+    # （锁定稿§11 返回路径；`_SPEC/06` Q-06 裁决：补录事件2必需字段，不重复预评估）
+    # ⚠️ 该转换在 V0.1 的矩阵中缺失，导致其"快速建档"接口一旦被调用就会抛非法跳转；
+    #    V1.0 补齐此条，并有接口测试覆盖（tests/test_api_flow.py）。
+    Transition(
+        "E1-B02-STABILIZED",
+        (ST10,),
+        ST31,
+        "OUT-E2-STABLE",
+        ("stage_goal", "interventions"),
+        ("set_stage", "set_goal", "set_interventions", "set_next_review"),
+        label="急性安全稳定化后快速建档进入血糖稳定阶段",
+    ),
     # --- 事件2：完整评估并形成主动管理计划 ---
     Transition("E2-B01", (ST20,), ST31, "OUT-E2-STABLE", ("f026_start", "f027_stage", "f028_stage_goal", "f029_interventions"), ("set_stage", "set_goal", "set_interventions", "set_next_review"), label="启动-血糖稳定"),
     Transition("E2-B02", (ST20,), ST32, "OUT-E2-INDUCTION", ("f026_start", "f027_stage", "f028_stage_goal", "f029_interventions"), ("set_stage", "set_goal", "set_interventions", "set_next_review"), label="启动-缓解诱导"),

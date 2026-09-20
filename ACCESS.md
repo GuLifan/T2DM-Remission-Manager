@@ -75,6 +75,19 @@
 | 45 | 2026-09-20 | 运行测试与静态检查（提权） | `uv run pytest`（133 passed）、`uv run ruff check`（全绿） | require_escalated | 修复三处问题：自环转换登记不全、阶段比较字段用错、终态键读取方式；详见 `_SPEC/08` M3 问题表。 |
 | 46 | 2026-09-20 | 回填映射与更新文档 | `mapping.md`（32 条规则回填实现与测试位置）、`_SPEC/08`、`CHANGELOG.md`、本文件 | workspace-write | API 列仍待 M4 回填。 |
 
+## 二之四、M3 复核与 M4 阶段行为（2026-09-20）
+
+| 序号 | 时间 | 行为 | 对象 | 权限模式 | 备注 |
+| --- | --- | --- | --- | --- | --- |
+| 47 | 2026-09-20 | M3 注释复核（只读） | `app/domain/*`、`app/services/*`、`app/utils/date_utils.py`、`app/models/clinical.py` | 只读 | 逐函数核对 `UI.md` 第三部分注释规范，发现 6 个函数只有一句话说明、若干临床分支缺行注释。 |
+| 48 | 2026-09-20 | 补齐注释 | `domain/transitions.py`（transitions_for / dead_end_states）、`services/defaults.py`、`services/pre_assessment.py::_not_start`、`services/phase_review.py::_routine_action`、`services/remission_judge.py::choose_target_stage`、`services/post_remission.py::_next_review`、`models/clinical.py`（target_state 约定） | workspace-write | 行注释补充：缓解终止的两个触发条件、状态比较字段差异。 |
+| 49 | 2026-09-20 | **提权**推送 `develop` 到 `main`（每日规则） | `git checkout main` → `git merge --ff-only develop` → `git push origin main`；随后回到 `develop` 并推送 | require_escalated | `main` 由 `3932167` 快进到 `1fc7286`（含 M1/M2/M3 全部内容）；按 Lifan 要求保留每日检查窗口。 |
+| 50 | 2026-09-20 | 写入 M4 接口层 | `api/flow_common.py`（共享骨架）、`api/{pre_assessment,full_assessment,phase_review,observation,remission_judge,post_remission,domain_data}.py`、`api/router.py`、`api/patients.py`（新增 reopen）、`repository/patients.py::apply_outcome` | workspace-write | 事务边界在接口层；事件与审计同事务；领域数据导出给前端。 |
+| 51 | 2026-09-20 | 补齐 SYS 操作提示 | `domain/templates.py`（新增 `SYS-ST00-REOPEN`）、`scripts/check_docs.py`、`_SPEC/04`、`mapping.md` | workspace-write | SYS 级提示由 2 条变为 3 条（2 条兜底 + 1 条操作提示），并同步自查口径。 |
+| 52 | 2026-09-20 | 修复 V0.1 潜伏缺陷（转换表补条目） | `domain/transitions.py` 新增 `E1-B02-STABILIZED`（ST10→ST31） | workspace-write | V0.1 的"急性安全快速建档"接口会因该转换缺失而抛非法跳转，且无测试覆盖；已在代码注释中记录该发现。 |
+| 53 | 2026-09-20 | 写入 M4 测试 | `tests/test_api_flow.py`；更新 `tests/test_state_machine.py`（SYS 计数） | workspace-write | 覆盖主链路、病例3、入口守卫（IMP-3/4/5）、只读性、幂等、事件与审计同事务。 |
+| 54 | 2026-09-20 | 运行测试与静态检查（提权） | `uv run pytest`（**146 passed**）、`uv run ruff check`（全绿）、`python scripts/check_docs.py`（3/3） | require_escalated | 过程中修正三处测试自身问题：把"未来日期"假设修正为相对今天计算、幂等用例改走暂缓自环、测试会话需 `expire_all()` 才能读到接口写入的新状态。 |
+
 ---
 
 ## 二、当前授权范围（Lifan 授予，2026-09-19）

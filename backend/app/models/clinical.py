@@ -22,6 +22,8 @@ from pydantic import BaseModel, Field
 class PreAssessmentInput(BaseModel):
     """预评估输入：核心五问（F001–F005）+ 机会信息（F006–F010）+ 前置事项（F012）。"""
 
+    # 客户端请求标识：用于幂等（同一 request_id 不产生重复事件）
+    request_id: str | None = None
     f001_t2dm_established: str = Field(description="成人T2DM判断是否基本成立（是/否/待确认）")
     f002_acute_unsafe: str = Field(description="当前是否存在急性不安全状态")
     f003_type_doubt: str = Field(description="是否存在足以影响下一步的明显分型疑点")
@@ -48,12 +50,25 @@ class PreAssessmentResult(BaseModel):
     return_hint: str | None = None
 
 
+class AcuteStabilizedInput(BaseModel):
+    """急性安全暂缓后医生确认已稳定化 → 快速建档（补录事件2必需字段，不重复预评估）。
+
+    依据：锁定稿§11 返回路径；`_SPEC/06` Q-06 裁决。
+    """
+
+    request_id: str | None = None
+    stage_goal: str = Field(min_length=1, description="一个主要阶段目标")
+    interventions: list[str] = Field(description="干预组合（多选，至少一项）")
+    next_review_date: date | None = None
+
+
 # ===================== 事件2：完整评估并形成主动管理计划 =====================
 
 
 class FullAssessmentInput(BaseModel):
     """完整评估输入：六维度评估资料（F013–F025）+ 一次性计划决策（F026–F029）。"""
 
+    request_id: str | None = None
     f013_diagnosis_basis: str | None = None
     f014_hba1c: float | None = None
     f016_drugs: str | None = None
@@ -95,6 +110,7 @@ class FullAssessmentResult(BaseModel):
 class PhaseReviewInput(BaseModel):
     """阶段复评输入：复评最少输入（F030–F033）+ 动作（F034–F036）+ 分支事实。"""
 
+    request_id: str | None = None
     f030_safety_issues: list[str] = Field(default_factory=list)
     f031_stage_indicator: str | None = None
     f032_treatment_changes: list[str] = Field(default_factory=list)
@@ -151,6 +167,7 @@ class ObservationStatus(BaseModel):
 class MedicationRestartInput(BaseModel):
     """观察期重新用药（退出观察期）输入。"""
 
+    request_id: str | None = None
     f037_reason: str = Field(description="因高血糖 / 因器官获益 / 因体重获益 / 其他")
     target_stage: str = Field(description="返回事件3后的管理阶段（医生选择）")
 
@@ -172,6 +189,7 @@ class MedicationRestartResult(BaseModel):
 class RemissionJudgeInput(BaseModel):
     """缓解判定输入：诊断可信、停药时间、指标与独立复核。"""
 
+    request_id: str | None = None
     f041_diagnosis_credible: str = Field(description="既往T2DM诊断是否可信（是/否/待复核）")
     f042_drug_free_3m: str = Field(description="已停用全部降糖作用药物至少3个月（是/否/待核对）")
     f043_hba1c_reliable: str = Field(description="HbA1c结果是否可可靠解释（是/否/待复核）")
@@ -179,6 +197,16 @@ class RemissionJudgeInput(BaseModel):
     f044_fpg: float | None = None
     f045_ea1c: float | None = None
     f046_independent_review: str | None = None
+    # 返回主动管理时由医生选择的阶段（仅 E4-B02 / E4-B06 需要；缺失时接口只返回提示、不落库）
+    target_stage: str | None = None
+
+
+class RemissionConfirmInput(BaseModel):
+    """缓解确认输入（E4-B04 / E4-B05）。"""
+
+    request_id: str | None = None
+    f048_confirm: str = Field(description="确认 / 暂不确认")
+    f012_pre_tasks: str | None = Field(default=None, description="暂不确认时的定向复核项目")
 
 
 class RemissionJudgeResult(BaseModel):
@@ -208,6 +236,7 @@ class RemissionJudgeResult(BaseModel):
 class PostRemissionInput(BaseModel):
     """缓解后复评输入。"""
 
+    request_id: str | None = None
     f049_glucose: str | None = None
     f050_med_status: str = Field(description="未使用 / 因高血糖 / 因器官获益 / 因体重获益")
     f051_risk_triggers: list[str] = Field(default_factory=list)

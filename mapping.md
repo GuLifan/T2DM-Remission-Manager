@@ -47,6 +47,7 @@
 | E5-B05 | 缓解后：默认随访计划 | OUT-E5-FOLLOWUP | `services/defaults.py::next_followup_date` | 待 M4 | 同上、`tests/test_locked_cases.py` |
 | SYS-E1-CLOSE | 兜底提示：分型复核为其他类型时关闭本路径（非锁定临床模板） | SYS-E1-CLOSE | `domain/transitions.py`（ST10→ST99） | 待 M4 | `tests/test_state_machine.py`、`test_locked_cases.py`（病例2） |
 | SYS-E5-REVIEW | 兜底提示：缓解后血糖暂不能解释时保留观察（非锁定临床模板） | SYS-E5-REVIEW | `post_remission.py`、`domain/transitions.py`（ST60 自环） | 待 M4 | `tests/test_services_e4_e5.py` |
+| SYS-ST00-REOPEN | 操作提示：从常规管理重新发起预评估（非临床结论） | SYS-ST00-REOPEN | `api/patients.py::reopen_pre_assessment` | `POST /api/patients/{id}/reopen` ✅ M4 | `tests/test_api_flow.py` |
 
 ---
 
@@ -76,9 +77,9 @@
 
 | 项目 | 位置 | 说明 |
 | --- | --- | --- |
-| 模板正文 | `backend/app/domain/templates.py` ✅ M3 已建立 | 30 个 `OUT-*` + 2 个 `SYS-*`，共 32 条锁定文案 |
+| 模板正文 | `backend/app/domain/templates.py` ✅ M3 已建立 | 30 条锁定 `OUT-*` + 3 条 SYS 级提示（2 条兜底 + 1 条操作提示） |
 | 模板冻结测试 | `backend/tests/test_templates_frozen.py` ✅ M3 已建立 | **与甲方原件逐字比对**：从 `_DEV/甲方材料/md派生/临床流程实现表_输出模板.md` 解析出 30 条正文，与代码逐字断言；任何改写立即失败 |
-| 计数口径 | `_SPEC/04` 第三节 | V0.1 文档写"34 个"有误，V1.0 更正为 32 条（见 `_SPEC/06` V1.0-Q-01） |
+| 计数口径 | `_SPEC/04` 第三节 | V0.1 文档写"34 个"有误，V1.0 更正为 30 条锁定文案（SYS 级提示另计，见 `_SPEC/06` V1.0-Q-01） |
 
 ---
 

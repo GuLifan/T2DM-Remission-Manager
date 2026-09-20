@@ -11,8 +11,27 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api import auth, patients
+from app.api import (
+    auth,
+    domain_data,
+    full_assessment,
+    observation,
+    patients,
+    phase_review,
+    post_remission,
+    pre_assessment,
+    remission_judge,
+)
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(auth.router)
 api_router.include_router(patients.router)
+# 领域数据：状态、流程单元、分支优先级（供前端渲染，避免前后端各写一套）
+api_router.include_router(domain_data.router)
+# 临床流程单元 1–6
+api_router.include_router(pre_assessment.router)
+api_router.include_router(full_assessment.router)
+api_router.include_router(phase_review.router)
+api_router.include_router(observation.router)
+api_router.include_router(remission_judge.router)
+api_router.include_router(post_remission.router)

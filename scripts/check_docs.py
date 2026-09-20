@@ -92,14 +92,15 @@ def check_template_count() -> tuple[bool, str]:
     if missing:
         return False, f"mapping.md 未覆盖的锁定模板（{len(missing)} 个）：{missing}"
 
-    # 2) SYS 级兜底提示也必须登记（它们是代码中的真实出口，容易漏记）
+    # 2) SYS 级提示也必须登记（它们是代码中的真实出口，容易漏记）：
+    #    2 条临床兜底提示（关闭路径、保留缓解观察）+ 1 条操作提示（重新发起预评估）
     sys_ids = {item for item in mapping_ids if item.startswith("SYS-")}
-    if len(sys_ids) != 2:
-        return False, f"mapping.md 中 SYS 级提示应为 2 个，实际 {len(sys_ids)} 个：{sorted(sys_ids)}"
+    if len(sys_ids) != 3:
+        return False, f"mapping.md 中 SYS 级提示应为 3 个，实际 {len(sys_ids)} 个：{sorted(sys_ids)}"
 
-    # 3) _SPEC/04 的计数口径必须是"30 个 OUT-* + 2 个 SYS-*"
-    if "30 个 `OUT-*` + 2 个 `SYS-*`" not in spec_text:
-        return False, "_SPEC/04 的模板计数口径未更新（应为「30 个 OUT-* + 2 个 SYS-*」）"
+    # 3) _SPEC/04 的计数口径必须是"30 条锁定 OUT-* + 3 条 SYS 级提示"
+    if "30 条锁定 `OUT-*` + 3 条 SYS 级提示" not in spec_text:
+        return False, "_SPEC/04 的模板计数口径未更新（应为「30 条锁定 OUT-* + 3 条 SYS 级提示」）"
 
     return True, (
         f"甲方原件 {len(canonical_ids)} 个锁定模板全部已登记；"

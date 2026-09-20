@@ -97,10 +97,14 @@ def test_transitions_carry_rule_id_and_template() -> None:
 
 
 def test_templates_are_frozen_and_counted_correctly() -> None:
-    """锁定文案数量：30 个 OUT-* + 2 个 SYS-*（更正 V0.1 的"34 个"口径）。"""
+    """锁定文案数量：30 个 OUT-* + 3 条 SYS 级提示。
+
+    SYS 级提示不属于锁定临床文案（30 条），它们是非临床出口的兜底与操作提示：
+    关闭路径、保留缓解观察、重新发起预评估。
+    """
     assert len(templates.CLINICAL_TEMPLATE_IDS) == 30
-    assert len(templates.SYS_TEMPLATE_IDS) == 2
-    assert len(templates.TEMPLATES) == 32
+    assert len(templates.SYS_TEMPLATE_IDS) == 3
+    assert len(templates.TEMPLATES) == 33
     # 每条文案都不得为空，且不得残留未替换的说明性标记
     for template_id, text in templates.TEMPLATES.items():
         assert text.strip(), f"{template_id} 文案为空"
