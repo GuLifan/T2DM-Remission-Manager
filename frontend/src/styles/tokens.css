@@ -66,15 +66,18 @@
   --etmms-font-family: Roboto, "Google Sans", "Segoe UI", "PingFang SC", "Microsoft YaHei",
     "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
   --etmms-text-page-title: 24px;
+  /* 任务标题：TaskPanel 内使用（UI.md 1.5，2026-09-21 新增） */
+  --etmms-text-task-title: 18px;
   --etmms-text-section-title: 16px;
-  --etmms-text-body: 14px;
-  --etmms-text-label: 14px;
-  --etmms-text-caption: 12px;
+  /* 正文 14→16px、标签 14→16px、辅助说明 12→13px（UI.md 1.5，2026-09-21 调整） */
+  --etmms-text-body: 16px;
+  --etmms-text-label: 16px;
+  --etmms-text-caption: 13px;
   --etmms-weight-regular: 400;
   --etmms-weight-medium: 500;
   --etmms-weight-semibold: 600;
   --etmms-line-tight: 1.33;
-  --etmms-line-normal: 1.43;
+  --etmms-line-normal: 1.5;
 
   /* ===== 层级与描边 ===== */
   --etmms-border-width: 1px;
