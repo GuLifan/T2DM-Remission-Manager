@@ -51,6 +51,8 @@ def evaluate_post_remission(
         BusinessRuleError: 需要返回阶段复评但医生未选择阶段时抛出。
     """
     # ---- 1) 缓解状态终止：直接返回事件3；仅新分型证据或重大变化返回完整评估 ----
+    # 终止有两个触发条件（锁定稿§10）：血糖达到糖尿病范围，或因高血糖重新使用降糖药。
+    # 两者任一成立即视为本次缓解状态结束——但"因器官/体重获益用药"不在此列（见下一分支）。
     terminated = data.f055_glucose_state == enums.GLUCOSE_DIABETIC_RANGE or (
         data.f050_med_status == enums.MED_FOR_HYPERGLYCEMIA
     )
@@ -127,7 +129,19 @@ def _require_target_stage(data: PostRemissionInput, current_state: str) -> str:
 def _next_review(
     data: PostRemissionInput, today: date, remission_confirmed_date: date | None
 ) -> date | None:
-    """计算下次随访日期：医生指定优先，否则按随访节奏计算。"""
+    """计算下次随访日期。
+
+    优先级：医生指定 > 按随访节奏计算（第 6/12/18/24 个月，满 2 年后按年顺延）。
+    缺少缓解确认日期时返回 None，由前台提示医生手工设置，系统不猜测。
+
+    参数:
+        data (PostRemissionInput): 复评输入（可能含医生指定的 next_review_date）。
+        today (date): 当前日期（由 Clock 注入）。
+        remission_confirmed_date (date | None): 缓解确认日期。
+
+    返回:
+        date | None: 下次随访日期或 None。
+    """
     if data.next_review_date is not None:
         return data.next_review_date
     if remission_confirmed_date is None:

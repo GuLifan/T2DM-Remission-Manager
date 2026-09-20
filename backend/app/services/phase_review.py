@@ -155,7 +155,22 @@ def _routine_action(
     today: date,
     ignored_notes: list[str],
 ) -> PhaseReviewResult:
-    """处理常规复评动作：继续 / 调整 / 转换阶段 / 结束主动管理。"""
+    """处理常规复评动作：继续 / 调整 / 转换阶段 / 结束主动管理。
+
+    参数:
+        current_state (str): 当前状态（ST31 或 ST32）。
+        stage_value (str): 阶段简称（血糖稳定 / 缓解诱导），用于比较与落库。
+        stage_label (str): 状态全名，仅用于自然语言文案。
+        data (PhaseReviewInput): 复评输入。
+        today (date): 决策当天，用于默认复评日期。
+        ignored_notes (list[str]): 被更高优先级分支覆盖的说明（需原样带回前台）。
+
+    返回:
+        PhaseReviewResult: 该动作对应的结论与目标状态。
+
+    异常:
+        BusinessRuleError: 缺少调整内容 / 新阶段缺失或与当前相同 / 缺少新阶段目标 / 缺少结束原因 / 动作取值非法。
+    """
     next_review = data.next_review_date or defaults.default_next_review_date(today)
 
     if data.f034_action == enums.ACT_CONTINUE:

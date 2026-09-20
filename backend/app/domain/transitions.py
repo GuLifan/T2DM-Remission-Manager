@@ -127,7 +127,17 @@ def validate_transition(source_state: str, target_state: str) -> None:
 
 
 def transitions_for(rule_id: str) -> tuple[Transition, ...]:
-    """按规则 ID 查询转换定义（供测试与接口层查询必需字段/副作用）。"""
+    """按规则 ID 查询转换定义。
+
+    为什么需要：接口层要据此校验"必需输入是否齐全"，测试要据此断言"每笔转换都带模板"。
+    同一条规则可能有多笔转换（例如 E3-B01 在血糖稳定与缓解诱导下各有一条自环）。
+
+    参数:
+        rule_id (str): 规则 ID，如 E3-B07。
+
+    返回:
+        tuple[Transition, ...]: 该规则对应的全部转换；规则不存在时返回空元组。
+    """
     return tuple(item for item in TRANSITIONS if item.rule_id == rule_id)
 
 
@@ -135,6 +145,9 @@ def dead_end_states() -> list[str]:
     """返回没有任何出口的状态列表（终态 ST99 除外）。
 
     这是"无出口检查"的实现：首轮验收要求每个状态都能走到下一步、常规管理或关闭路径。
+
+    返回:
+        list[str]: 没有出口的状态代码列表；正常情况下应为空列表。
     """
     return [
         state

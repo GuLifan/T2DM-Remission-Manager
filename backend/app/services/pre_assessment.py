@@ -112,7 +112,18 @@ def evaluate_pre_assessment(current_state: str, data: PreAssessmentInput) -> Pre
 
 
 def _not_start(current_state: str, reason: str) -> PreAssessmentResult:
-    """构造"当前不启动"结论（转入常规糖尿病综合管理）。"""
+    """构造"当前不启动"结论（转入常规糖尿病综合管理）。
+
+    为什么单独抽出来：预评估有两条路径都会得到"当前不启动"（患者明确拒绝、T2DM 判断不成立），
+    共用同一段构造逻辑可以避免两处文案与状态不一致。
+
+    参数:
+        current_state (str): 患者当前状态（应为 ST10）。
+        reason (str): 不启动的原因说明，会拼进返回位置提示中。
+
+    返回:
+        PreAssessmentResult: 结论为"当前不启动"，目标状态 ST00。
+    """
     target_state = ST00
     validate_transition(current_state, target_state)
     return PreAssessmentResult(

@@ -186,6 +186,9 @@ class RemissionJudgeResult(BaseModel):
 
     blocked：是否被客观条件阻断（未到期 / 仍用药）。
     objective_met：客观条件是否满足（满足也不等于缓解——必须由医生确认）。
+
+    target_state 约定：为空字符串表示"返回哪个管理阶段由医生选择"，
+    此时 `needs_target_stage=True`，接口层必须先要求医生补选阶段再落库。
     """
 
     blocked: bool

@@ -220,7 +220,17 @@ def confirm_remission(current_state: str, action: str, pre_tasks: str | None = N
 
 
 def choose_target_stage(rule_id: str) -> tuple[str, ...]:
-    """返回"需要医生选择返回阶段"时的可选状态（供接口层构造提示与校验）。"""
+    """返回"需要医生选择返回阶段"时的可选状态。
+
+    为什么需要：E4-B02（仍用药）与 E4-B06（未达标）都必须回到事件3，
+    但回到血糖稳定还是缓解诱导由**医生**决定；接口层据此校验医生是否已补选。
+
+    参数:
+        rule_id (str): 判定规则 ID。
+
+    返回:
+        tuple[str, ...]: 可选的目标状态；不需要选择时返回空元组。
+    """
     if rule_id in {"E4-B02", "E4-B06"}:
         return (ST31, ST32)
     return ()

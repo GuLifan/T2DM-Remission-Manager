@@ -27,7 +27,16 @@ ANNUAL_FOLLOWUP_MONTHS = 12
 
 
 def default_next_review_date(today: date) -> date:
-    """按默认间隔计算下次正式复评日期（医生可在界面上覆盖）。"""
+    """按默认间隔计算下次正式复评日期。
+
+    注意：这是"缺省值"，不是强制值——医生在界面上指定日期时一律以医生为准。
+
+    参数:
+        today (date): 本次决策日期（由 Clock 注入，保证可测试）。
+
+    返回:
+        date: 默认复评日期（今天 + REVIEW_INTERVAL_WEEKS 周）。
+    """
     return today + timedelta(weeks=REVIEW_INTERVAL_WEEKS)
 
 
