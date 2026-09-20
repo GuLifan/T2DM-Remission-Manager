@@ -54,7 +54,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="ETMMS_", env_file=".env", extra="ignore")
 
     host: str = "127.0.0.1"
-    port: int = 8080
+    # 默认端口 8088：8080 已被本机其他开发任务占用（2026-09-20 Lifan 指定）
+    port: int = 8088
     # 会话有效期（小时）；本地单机使用，默认 8 小时覆盖一个门诊班次
     session_hours: int = 8
     log_level: str = "INFO"

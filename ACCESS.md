@@ -87,6 +87,8 @@
 | 52 | 2026-09-20 | 修复 V0.1 潜伏缺陷（转换表补条目） | `domain/transitions.py` 新增 `E1-B02-STABILIZED`（ST10→ST31） | workspace-write | V0.1 的"急性安全快速建档"接口会因该转换缺失而抛非法跳转，且无测试覆盖；已在代码注释中记录该发现。 |
 | 53 | 2026-09-20 | 写入 M4 测试 | `tests/test_api_flow.py`；更新 `tests/test_state_machine.py`（SYS 计数） | workspace-write | 覆盖主链路、病例3、入口守卫（IMP-3/4/5）、只读性、幂等、事件与审计同事务。 |
 | 54 | 2026-09-20 | 运行测试与静态检查（提权） | `uv run pytest`（**146 passed**）、`uv run ruff check`（全绿）、`python scripts/check_docs.py`（3/3） | require_escalated | 过程中修正三处测试自身问题：把"未来日期"假设修正为相对今天计算、幂等用例改走暂缓自环、测试会话需 `expire_all()` 才能读到接口写入的新状态。 |
+| 55 | 2026-09-20 | 调整后端默认端口 8080 → **8088** | `backend/app/config.py`、`scripts/dev.py`、`frontend/vite.config.ts`（代理）、`README.md`、`backend/README.md`、`frontend/README.md`、`_SPEC/07` 配置表 | workspace-write | Lifan 指定：8080 已分配给本机其他开发任务。`_DEV/历史参考/` 中的旧文档保持原样（历史留存，不修改）。端口仍可用环境变量 `ETMMS_PORT` 覆盖。 |
+| 56 | 2026-09-20 | 停止旧端口服务并在新端口重启（提权） | 结束 8080 上的 ETMMS 后端进程（PID 16984，我此前启动）；在 **127.0.0.1:8088** 重新启动 | require_escalated | 核对结果：8088 `/api/health` 返回 ok、首页 200；8080 已释放且无监听。 |
 
 ---
 

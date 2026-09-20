@@ -98,7 +98,7 @@ ETMMS_V1.0/
 # 后端（首次会创建项目内虚拟环境）
 cd backend
 uv sync
-uv run uvicorn app.main:app --reload --port 8080
+uv run uvicorn app.main:app --reload --port 8088
 
 # 前端
 cd frontend

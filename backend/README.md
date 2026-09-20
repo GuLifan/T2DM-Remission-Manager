@@ -6,7 +6,7 @@
 
 ```bash
 uv sync
-uv run uvicorn app.main:app --reload --port 8080
+uv run uvicorn app.main:app --reload --port 8088
 ```
 
 ## 测试

@@ -6,7 +6,7 @@
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173，/api 代理到 8080
+npm run dev      # http://localhost:5173，/api 代理到 8088
 ```
 
 ## 构建与检查

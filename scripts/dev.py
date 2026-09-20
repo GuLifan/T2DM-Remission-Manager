@@ -2,7 +2,7 @@
 脚本名称：dev.py
 所属层级：辅助脚本（scripts）
 功能说明：一键启动开发态前后端服务。
-    1. 幂等检查后端(8080)与前端(5173)是否在运行；
+    1. 幂等检查后端(8088)与前端(5173)是否在运行；
     2. 启动缺失的服务（后端 uv run uvicorn --reload；前端 npm run dev）；
     3. 等待后端健康检查通过；
     4. 按 Ctrl+C 一键停止由本脚本启动的全部子进程。
@@ -32,7 +32,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 BACKEND_DIR = ROOT / "backend"
 FRONTEND_DIR = ROOT / "frontend"
-BACKEND_PORT = 8080
+# 后端端口 8088（8080 已被本机其他开发任务占用，2026-09-20 调整）
+BACKEND_PORT = 8088
 FRONTEND_PORT = 5173
 APP_URL = f"http://localhost:{FRONTEND_PORT}"
 HEALTH_URL = f"http://127.0.0.1:{BACKEND_PORT}/api/health"
@@ -109,7 +110,7 @@ def start_backend() -> subprocess.Popen | None:
             return None
         log(f"警告：端口 {BACKEND_PORT} 被占用但健康检查失败，仍尝试启动。")
     uv = find_command("uv")
-    log("启动后端：uvicorn (127.0.0.1:8080, --reload) …")
+    log("启动后端：uvicorn (127.0.0.1:8088, --reload) …")
     proc = subprocess.Popen(
         [uv, "run", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(BACKEND_PORT), "--reload"],
         cwd=str(BACKEND_DIR),
