@@ -158,3 +158,4 @@
 | --- | --- | --- | --- | --- | --- |
 | 72 | 2026-09-24 | **按 Lifan 要求编写项目交接文件** | 新建 `HANDOVER.md`（项目根目录，398 行 / 24.8 KB） | require_escalated（V1.0 写入） | 面向"接手的下一个 AI Agent"：项目定位与 10 条临床红线、文档地图与权威顺序、当前进度与质量基线、代码地图与 6 个关键机制、环境命令、待办与三批实施计划、**12 条踩坑教训**、与 Lifan 的 10 条协作约定、交接清单与交付前安全项。 |
 | 73 | 2026-09-24 | 交接前状态核实（只读） | git 分支与提交、文件清单、`_SPEC` 清单、服务状态、账号与测试数据、`ACCESS.md` 自身 | 只读 | 核实结果：`develop` 领先 `origin/develop` **12 个提交未推送**；`main` 停在 `1fc7286`；后端 8088 与前端 5173 **均已停止**；`_SPEC` 共 10 份文档 + README；账号 `admin` 可用、`doctor` 已停用。 |
+| 74 | 2026-09-24 | 接手后质量基线复核（提权） | 后端 `uv run pytest -q -p no:warnings`（**146 passed**）、`uv run ruff check .`（全绿）；前端 `npm test`（**10 passed / 4 files**）、`npm run lint`（无告警）、`npm run build`（通过）；`python scripts/check_docs.py`（预期 **2/3**） | require_escalated（uv 缓存与前端子进程） | 沙箱内首次运行分别因 uv 缓存拒绝访问与 Vite 子进程 `spawn EPERM` 被环境拦截，提权复跑后全部代码检查通过；文档门禁唯一红灯仍为尚未实现 `TaskPanel` 导致 `--etmms-text-task-title` 未使用，与交接说明一致。 |
