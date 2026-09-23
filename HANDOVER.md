@@ -18,20 +18,22 @@ git branch -vv && git status --short && git log --oneline -n 12
 #    README.md → UI.md → _SPEC/README.md → _SPEC/01 → _SPEC/09 第五节 → _SPEC/06 第七节
 
 # 3) 把服务跑起来（后端 8088 / 前端 5173）
+#    测试账号需要全流程入口时，先在当前 PowerShell 设置：$env:ETMMS_TEST_MODE='true'
 cd backend && uv run uvicorn app.main:app --host 127.0.0.1 --port 8088   # 需要提权（见 5.6）
 cd frontend && npm run dev                                              # 另一个终端
 
 # 4) 跑一遍质量基线，确认环境正常
-cd backend && uv run pytest -q -p no:warnings    # 期望 146 passed
-cd frontend && npm test                          # 期望 10 passed
-python scripts\check_docs.py                     # 期望 2/3（第 3 项是"故意留的红灯"，见 4.4）
+cd backend && uv run pytest -q -p no:warnings    # 期望 152 passed
+cd frontend && npm test                          # 期望 14 passed / 6 files
+python scripts\check_docs.py                     # 期望 3/3
 
 # 5) 看数据里有什么
 #    账号：admin / P@ssw0rd（测试账号）；doctor 已停用
 #    患者：3 位演示患者（MRN-DEMO-001 / 002、ZY010000001）
 
-# 6) 重读 Lifan 最近的手工修订（他正在改 _SPEC/ 下全部文件）
-git diff --stat          # 看他改了什么
+# 6) 第一批已完成；继续前核对第二批约束与未提交改动
+git diff --stat
+#    重点读 _SPEC/08 第八节、_SPEC/09 第五节、_SPEC/06 第七节
 ```
 
 ---
@@ -87,8 +89,8 @@ git diff --stat          # 看他改了什么
 | `_SPEC/06` | 问题清单与裁决记录（含 Q001–Q007 实现约定）；**第七节是 12 项待裁决** | 存疑进这里 |
 | `_SPEC/07` | 技术架构与数据模型；**第十六节是第二轮技术影响评估** | 改数据模型前必读 |
 | `_SPEC/08` | 实施计划与交付验收；**第八节是三批实施建议与过门条件** | 排期看这里 |
-| `_SPEC/09` | 前端体验审阅：**61 条问题**（第五节 17 条是 2026-09-23 新增；5.3 是已定稿的科室清单） | Lifan 正在手工修订 |
-| `_SPEC/10` | UI 规范修订提案：**UI-R1…UI-R10 待并入 `UI.md`** | 他审完才并入 |
+| `_SPEC/09` | 前端体验审阅：**61 条问题**（第五节 17 条是 2026-09-23 新增；5.3 是已定稿的科室清单） | Lifan 已审定；第一批 UX-46/47/58 已回填 |
+| `_SPEC/10` | UI 规范修订提案：UI-R1…UI-R10 | Lifan 已审定；第一批相关项已落地 |
 | `MAPPING.md` | 临床规则 → 代码 → 测试映射清单（**全大写文件名**） | 改临床逻辑必须同步 |
 | `ACCESS.md` | **Agent 高权限行为日志**（每次提权/写库/联网都要追加） | 非用户文档 |
 | `_DEV/` | 甲方材料原件 + 医学依据 PDF + 历史参考 | **只读，不改** |
@@ -111,6 +113,7 @@ git diff --stat          # 看他改了什么
 | M3 临床内核 | ✅ | 领域层单一数据源、6 个纯函数服务、3 病例端到端、锁定文案逐字冻结 |
 | M4 接口层 | ✅ | 13 个流程端点 + 3 个领域端点、事件与审计同事务、幂等、入口守卫 |
 | M5 前端成品 | ✅ | 登录/患者列表/工作台 + 6 个流程页面（**但体验问题见 `_SPEC/09`**） |
+| 第二轮第一批 | ✅ | 安全测试模式、账号级模拟日期、测试患者全流程入口、TaskPanel、`MAPPING.md` 命名修正 |
 | M6 依据检索库 | ⬜ 未开始 | 三份 PDF 文本抽取 → FTS5 检索；素材清单在 `_DEV/依据索引表_待填写_v1.0.csv`（**当前 0/36 行已填**） |
 | M7 打包与交付 | ⬜ 未开始 | 便携版 PyInstaller、交付物 xlsx、病例走查 |
 
@@ -118,47 +121,47 @@ git diff --stat          # 看他改了什么
 
 | 项 | 命令 | 期望 |
 | --- | --- | --- |
-| 后端测试 | `cd backend; uv run pytest -q -p no:warnings` | **146 passed** |
+| 后端测试 | `cd backend; uv run pytest -q -p no:warnings` | **152 passed** |
 | 后端静态检查 | `uv run ruff check .` | All checks passed |
-| 前端测试 | `cd frontend; npm test` | **10 passed / 4 files** |
+| 前端测试 | `cd frontend; npm test` | **14 passed / 6 files** |
 | 前端构建 | `npm run build` | tsc + vite 通过 |
 | 前端 lint | `npm run lint` | 无告警 |
-| 文档一致性 | `python scripts\check_docs.py` | **2/3**（见 4.4，第 3 项是故意红灯） |
+| 文档一致性 | `python scripts\check_docs.py` | **3/3**（61 个 Token 全部有使用点） |
 
 ### 4.3 Git 状态（**重要**）
 
 ```
-develop  43ba601  [origin/develop: ahead 12]   ← 比远程领先 12 个提交（未推送）
+develop  [origin/develop: ahead 19]   ← 比远程领先 19 个提交（未推送；以 `git branch -vv` 的实时哈希为准）
 main     1fc7286  [origin/main]                ← 停在 M3 时代
 ```
 
-- **12 个提交未推送**（含 M4、M5、端口调整、全部文档修订）。Lifan 明确说过"**暂时不推送 M5，需要修改的内容很多**"。
+- **19 个提交未推送**（含 M4、M5、第一批测试能力、端口调整、全部文档修订）。Lifan 明确说过"**暂时不推送 M5，需要修改的内容很多**"。
 - **推送纪律**：当天工作在 `develop` 提交；**次日**经 Lifan 审阅后把 `develop` 快进合并到 `main` 并推送两个分支。
 - ⚠️ **本机 IP 在每天 19:00 之后无法连接 GitHub**——推送安排在 19:00 前，超时不要反复重试。
 
-### 4.4 那条"故意留的红灯"
+### 4.4 原有 Token 红灯已关闭
 
 ```bash
 python scripts\check_docs.py
 [PASS] Token 定义一致（61 个）
-[FAIL] Token 使用率：未被使用的 Token（1 个）：['--etmms-text-task-title']
+[PASS] Token 使用率（61 个）
 [PASS] 输出模板计数
 ```
 
-这不是缺陷：`--etmms-text-task-title`（18px 任务标题）是 `UI.md` 1.5 新定的 Token，**等实现"任务面板（TaskPanel）"后就会归零**。它是给我自己留的施工标记。
+`TaskPanel` 已在第一批实现并实际使用 `--etmms-text-task-title`（18px 任务标题）；施工标记已归零。以后若再出现未使用 Token，按真实门禁失败处理，不再视为预期红灯。
 
 ### 4.5 运行环境现状
 
 - **服务当前未运行**（8088 与 5173 都已停止），接手后按第 0 节启动。
 - 端口约定：后端 **8088**（8080 已分配给 Lifan 的其他任务，**不要改回 8080**），前端 **5173**。
-- 数据库：`data/runtime/etmms.db`（**已被 .gitignore 排除**；删掉即自动重建并跑迁移）。
+- 数据库：`data/runtime/etmms.db`（**已被 .gitignore 排除**；当前迁移头 `9c4a2f1b7e10`；删掉即自动重建并跑迁移）。
 - 账号：`admin` / `P@ssw0rd`（**测试账号**，`role=doctor`，用于测试 UI）；`doctor` **已停用且密码作废**（原因见 8.10）。
 
 ---
 
 ## 5. 代码地图与关键机制
 
-### 5.1 后端（`backend/app`，53 个 .py）
+### 5.1 后端（`backend/app`，55 个 .py）
 
 | 层 | 文件 | 职责 |
 | --- | --- | --- |
@@ -169,18 +172,18 @@ python scripts\check_docs.py
 | | `domain/transitions.py` | **合法状态转换表 + `validate_transition()` + `dead_end_states()`** |
 | 服务层（**纯函数**） | `services/pre_assessment.py`、`full_assessment.py`、`phase_review.py`、`observation.py`、`remission_judge.py`、`post_remission.py` | 6 个流程单元的临床决策；**不读系统时间、不碰数据库** |
 | | `services/defaults.py` | 12 周复评间隔、随访节奏（唯一来源） |
-| 接口层 | `api/auth.py`、`patients.py`、`pre_assessment.py`…`post_remission.py`、`domain_data.py` | 路由、鉴权、**事务提交** |
+| 接口层 | `api/auth.py`、`patients.py`、`pre_assessment.py`…`post_remission.py`、`domain_data.py`、`test_support.py` | 路由、鉴权、**事务提交**；测试入口独立隔离 |
 | | `api/flow_common.py` | **`get_patient_or_404` / `require_state` / `record_outcome`**：状态守卫 + 事件与审计**同事务** + 幂等 |
 | 数据层 | `repository/users.py`、`patients.py`、`events.py`、`audit.py`、`database.py`、`migrations.py` | 只 `add`+`flush`，**不 commit**；`events` 模块**刻意不提供更新/删除** |
-| 基础能力 | `core/security.py`（scrypt 密码 + HMAC 会话令牌）、`core/clock.py`（可注入时钟）、`core/exceptions.py`、`core/logging.py` | |
+| 基础能力 | `core/security.py`（scrypt 密码 + HMAC 会话令牌）、`core/clock.py`（可注入时钟）、`core/test_mode.py`（三重守卫 + 有效日期）、`core/exceptions.py`、`core/logging.py` | |
 | 工具 | `utils/date_utils.py` | 日历月加法（**月末钳位**）、最早可判定日期（取 MAX） |
-| 迁移 | `migrations/versions/` | 2 个迁移：初始结构、账号加固 |
+| 迁移 | `migrations/versions/` | 3 个迁移：初始结构、账号加固、测试模式与模拟日期 |
 
-### 5.2 前端（`frontend/src`，43 个源文件）
+### 5.2 前端（`frontend/src`，48 个 TS/TSX/CSS 源文件）
 
 | 目录 | 内容 |
 | --- | --- |
-| `components/` | 14 个组件：`PageHeader` / `ActionBar` / `SettingsRow` / `FieldRow`（自动注入 id+aria-describedby）/ **`ChoiceGroup`（互斥分支：单选+优先级+禁用原因）** / `CheckboxGroup` / `ResultBanner` / `StatusBadge` / `SideNav` / `EvidenceDrawer` / `ConfirmDialog` / `EmptyState` / `ErrorBanner` / `LoadingBlock` |
+| `components/` | 原 14 个组件 + `DateControl` / `TaskPanel` / `TestToolsPanel`；测试入口只由后端能力与测试患者标记共同开放 |
 | `pages/` | `LoginPage`（含首次创建账号）、`PatientListPage`、`PatientWorkspacePage`（壳层）、`flow/` 下 8 个流程页面、`KitchenSink`（组件自检页，路由 `/dev/kitchen-sink`） |
 | `api/` | `client.ts`（15 秒超时、AbortSignal 取消、401 清会话、自动 `request_id`）、`endpoints.ts` |
 | `styles/` | **`tokens.css`（Token 唯一来源，与 `UI.md` §2 逐字对应）**、`base.css`、`components.css`、`pages.css` |
@@ -193,7 +196,7 @@ python scripts\check_docs.py
 3. **锁定文案有冻结测试**：`backend/tests/test_templates_frozen.py` 会把代码里的 30 条文案与 `_DEV/甲方材料/md派生/临床流程实现表_输出模板.md` **逐字比对**，改写文案测试立刻红。
 4. **事件 + 审计同事务**：一律走 `api/flow_common.record_outcome()`；不要在别处单独 `db.commit()` 写临床事件。
 5. **幂等**：写接口带 `request_id`，重复提交返回 409 且不产生第二条事件。
-6. **时间靠注入**：服务层接收 `today` 参数（便于测试边界）；接口层当前用 `system_clock.today()`——**要做"模拟日期"功能就在这里改**（见 `_SPEC/09` UX-58）。
+6. **时间靠注入**：服务层接收 `today` 参数；接口层统一通过 `effective_today_for_patient()` 取账号有效日期。模拟日期写真实患者时后端直接拒绝，事件同时保存 `simulated_date`，不得绕回 `system_clock.today()` 破坏该边界。
 
 ### 5.4 门禁脚本 `scripts/check_docs.py`
 
@@ -248,18 +251,15 @@ python scripts\build.py
 
 ## 7. 待办与优先级（接手后的工作清单）
 
-### 7.1 当前阻塞：Lifan 正在手工修订文档
+### 7.1 当前状态：第一批已完成，无文档阻塞
 
-他 2026-09-24 明确说："**我将手工修订 `_SPEC/` 下面的全部文件**"。所以：
-
-1. **先 `git diff` 看他改了什么**，以他改后的版本为准；
-2. 他改完会说明"可以继续"；**在此之前不要动代码**（他此前反复强调"你先别动代码"）。
+Lifan 已于 2026-09-24 明确说明手工修订完成，并批准第一批方案。第一批约束、实现、迁移、自动化与浏览器走查均已完成；下一步应按 `_SPEC/08` 进入第二批，开始前仍需继续遵守“先确认约束，再执行”的协作规则。
 
 ### 7.2 三批实施计划（`_SPEC/08` 第八节）
 
 | 批次 | 内容 | 目的 |
 | --- | --- | --- |
-| **第一批（测试可用性，最紧急）** | UX-47 测试账号全权限（可跳转任意环节）+ UX-58 日期模拟 + UX-46 `mapping.md`→`MAPPING.md` 修正 | **让 Lifan 能看见并测试第 4、5、6 三个流程区块**——这是他当前最大的痛点 |
+| **第一批（测试可用性）** | ✅ UX-47 测试账号全权限 + UX-58 日期模拟 + UX-46 命名修正 + TaskPanel | 已完成（`3576ebd` 约束；`5ef8026` 实现） |
 | 第二批（档案与录入） | UX-48/49 患者信息字段与术语、UX-45 注册、UX-50 批量导入、UX-52 病程、UX-53 身高体重与 BMI、UX-54 数值与单位、UX-56 下拉与药物、UX-57 日期格式、**UX-61 内容居中** | 贴近门诊实际录入 |
 | 第三批（流程与权限） | UX-55 指标可更新、UX-59 列表搜索排序、UX-60 账号隔离 | 长期使用体验与数据边界 |
 
@@ -267,12 +267,12 @@ python scripts\build.py
 
 ### 7.3 需要 Lifan 提供内容/拍板的事（`_SPEC/06` 第七节 R2-01…R2-12）
 
-其中**必须他给内容**的两项：
+进入第二批前仍应重点核对两项内容：
 
 - **R2-02**「既往 T2DM 诊断基础」下拉选项（我给了 6 项草案）；
 - **R2-03**「降糖药物」多选清单（我给了按类别的草案）。
 
-其余是选择项（出生年月存储方式、测试后门边界、模拟日期作用范围、导入重复处理、"必须完善一次"的强制程度、是否记录指标趋势、日期控件方案、账号归属判定、注册是否开放）。**不要替他决定**。
+测试后门边界、模拟日期作用范围与日期控件方案已在第一批裁决并落地；其余第二/三批选择项仍以 `_SPEC/06` 最新状态为准，**不要替他决定**。
 
 ### 7.4 尚未开始的两个里程碑
 
@@ -337,6 +337,10 @@ V0.1 只在"有药"时写 `has_glucose_lowering_drug=True`，停药后旧值残�
 
 接口层用**另一个数据库会话**，测试里读接口写入的新状态前必须 `db_session.expire_all()`，否则拿到过期快照（我因此误判过一次布局问题）。
 
+### 8.13 JavaScript 日期转 ISO 的时区回退
+
+在中国时区把本地零点 `Date` 直接调用 `toISOString()`，日期可能回退到前一天。`DateControl` 已改为用 `Date.UTC(year, month - 1, day)` 生成提交值，并有前端测试覆盖。后续日期控件不要恢复为本地零点转 ISO 的写法。
+
 ---
 
 ## 9. 工作方式约定（**与 Lifan 协作的规则，务必遵守**）
@@ -364,11 +368,11 @@ V0.1 只在"有药"时写 `has_glucose_lowering_drug=True`，停药后旧值残�
 - `_SPEC/09` 5.3 的**科室清单 69 条**（已按"排除医技+去重+拼音排序"定稿，默认选中「内分泌科」）；
 - `UI.md` 1.3–1.9（信息层级与视觉焦点）与 D1–D5 决议（正文 16px / 主标题 24px / 任务面板常驻 / 时间线降级 / 必填硬约束）。
 
-### 10.2 等他审完再动
+### 10.2 下一批开始前核对
 
-- `_SPEC/09` 第五节（UX-45…UX-61）——**他正在手工修订**；
-- `_SPEC/06` 第七节（R2-01…R2-12 待裁决）；
-- `_SPEC/10` 第八节（UI-R1…UI-R10 待并入 `UI.md`）。
+- `_SPEC/09` 第五节（UX-45…UX-61）的“你的修改”与第一批处理结论；
+- `_SPEC/06` 第七节（R2-01…R2-14）的最新裁决状态；
+- `_SPEC/10` 第八节（UI-R1…UI-R10）的已审定约束。
 
 ### 10.3 明确未完成的事
 
@@ -378,8 +382,8 @@ V0.1 只在"有药"时写 `has_glucose_lowering_drug=True`，停药后旧值残�
 | M7 便携版打包 | 脚本已写，未跑完整流程 |
 | 交付物 xlsx（实现表 / 病例走查） | 未生成 |
 | Playwright E2E | 未做（用人工走查 + Vitest 替代） |
-| `mapping.md` → `MAPPING.md` 引用修正 | 文档已部分改，**脚本内 6 处与 README 3 处未改** |
-| `check_docs.py` 的红灯 | 等任务面板实现后归零 |
+| 第二批“档案与录入” | 未实施；按 `_SPEC/08` 8.1 推进 |
+| 第三批“流程与权限” | 未实施；按 `_SPEC/08` 8.1 推进 |
 
 ### 10.4 交付前的安全项（**别忘了**）
 
