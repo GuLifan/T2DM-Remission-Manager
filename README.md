@@ -37,7 +37,7 @@ ETMMS_V1.0/
 ├─ UI.md              UI 唯一真源（Chrome / Material Design 3，可执行合同）
 ├─ ACCESS.md          Agent 高权限行为日志（开发者审计用，非用户文档）
 ├─ CHANGELOG.md       版本变更记录
-├─ mapping.md         临床规则 / 字段 / 输出模板 → 代码与测试 的映射清单
+├─ MAPPING.md         临床规则 / 字段 / 输出模板 → 代码与测试 的映射清单
 ├─ _DEV/              项目本身的描述与甲方依据（只读参考，不修改原件）
 │   ├─ 甲方材料/       临床流程锁定稿、任务书、临床流程实现表（原件 + md 派生）
 │   ├─ 医学依据/       中文缓解共识、国际缓解共识、中国糖尿病防治指南 2024 版
@@ -125,7 +125,7 @@ python scripts\build.py     # 前端构建 → 后端静态托管 → PyInstalle
 ## 八、开发约定
 
 - **SPEC 驱动**：先改 `_SPEC`，评审通过后再改代码；实现与规范不一致时二者取一，并把差异记入 `_SPEC/06`
-- **临床规则映射**：任何临床逻辑改动必须同步更新 `mapping.md`
+- **临床规则映射**：任何临床逻辑改动必须同步更新 `MAPPING.md`
 - **UI**：一切样式取自 `UI.md` 的 Token；新增 Token 必须登记，未使用的 Token 视为缺陷
 - **注释**：代码注释一律简体中文，文件头与函数块注释模板见 `UI.md` 第三部分
 - **Git**：`main` / `develop` / `feat/*`，提交信息遵循 Conventional Commits
@@ -139,6 +139,6 @@ python scripts\build.py     # 前端构建 → 后端静态托管 → PyInstalle
 | --- | --- |
 | `UI.md` | UI 与代码注释的唯一真源 |
 | `_SPEC/01`–`08` | 项目边界、功能需求、状态机、字段模板、验收、问题裁决、技术架构、实施计划 |
-| `mapping.md` | 临床规则 → 代码 → 测试 的追踪表 |
+| `MAPPING.md` | 临床规则 → 代码 → 测试 的追踪表 |
 | `ACCESS.md` | Agent 高权限行为审计日志 |
 | `_DEV/PRINCIPLE.md` | 业务本质（为什么这样设计） |
