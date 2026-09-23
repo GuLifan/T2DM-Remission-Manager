@@ -12,10 +12,10 @@
  *   - 2026-09-20  v1.0  M5 初始实现
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { ApiError } from '../api/client'
-import { patientApi } from '../api/endpoints'
+import { domainApi, patientApi } from '../api/endpoints'
 import {
   DateControl,
   EmptyState,
@@ -40,12 +40,22 @@ interface PatientListPageProps {
 /** 患者列表 + 建档。 */
 export default function PatientListPage({ currentUser, onOpenPatient, onLogout }: PatientListPageProps) {
   const patients = useAsync((signal) => patientApi.list(signal), [])
+  const states = useAsync((signal) => domainApi.states(signal), [])
   const [name, setName] = useState('')
   const [gender, setGender] = useState<'男' | '女'>('女')
   const [birthDate, setBirthDate] = useState('')
   const [medicalRecordNo, setMedicalRecordNo] = useState('')
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
+
+  /**
+   * 患者列表必须显示“当前状态”，不能用仅适用于主动管理期的 stage 字段代替。
+   * 状态中文名继续来自后端领域表，避免在前端复制一份临床状态映射。
+   */
+  const stateNames = useMemo(
+    () => new Map((states.data ?? []).map((state) => [state.code, state.name])),
+    [states.data],
+  )
 
   /** 建立患者档案并进入工作台。 */
   async function handleCreate() {
@@ -179,9 +189,9 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
                         <td>{patient.name}</td>
                         <td>{patient.gender}</td>
                         <td className="num">{patient.medical_record_no}</td>
-                        {/* 只显示自然语言环节名称，不显示状态代码 */}
+                        {/* 只显示后端领域表提供的自然语言状态名，不泄漏状态代码 */}
                         <td>
-                          {patient.stage ?? '常规糖尿病综合管理'}
+                          {stateNames.get(patient.current_state) ?? patient.stage ?? '当前管理环节'}
                           {patient.is_test_patient ? <StatusBadge tone="neutral">测试患者</StatusBadge> : null}
                         </td>
                         <td className="table__actions">
