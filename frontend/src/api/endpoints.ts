@@ -24,6 +24,7 @@ import type {
   PreAssessmentResult,
   RemissionJudgeResult,
   StateOut,
+  TestContextOut,
   UserOut,
 } from '../types'
 
@@ -53,6 +54,20 @@ export const domainApi = {
   states: (signal?: AbortSignal) => api.get<StateOut[]>('/api/domain/states', signal),
   flowUnits: (signal?: AbortSignal) => api.get<FlowUnitOut[]>('/api/domain/flow-units', signal),
   branches: (signal?: AbortSignal) => api.get<BranchOut[]>('/api/domain/branches', signal),
+}
+
+/** 测试支持接口。后端仍会执行测试模式、账号、患者三重守卫。 */
+export const testSupportApi = {
+  context: (signal?: AbortSignal) => api.get<TestContextOut>('/api/test-context', signal),
+  setSimulatedDate: (simulatedDate: string | null) =>
+    api.post<TestContextOut>('/api/test-context/simulated-date', {
+      simulated_date: simulatedDate,
+    }),
+  jumpState: (patientId: number, targetState: string) =>
+    api.post<Patient>(`/api/patients/${patientId}/debug/jump-state`, {
+      target_state: targetState,
+      request_id: newRequestId('debug'),
+    }),
 }
 
 /** 临床流程接口（单元 1–6）。写操作一律带 request_id 以支持幂等。 */

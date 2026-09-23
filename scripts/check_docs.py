@@ -9,9 +9,9 @@
     2. Token 使用率：tokens.css 中每个 Token 必须在前端源码中被引用至少一次；
        未使用的 Token 视为缺陷（V0.1 的教训：定义了整套 Liquid Glass 却零引用）。
     3. 输出模板覆盖：以甲方原件《临床流程实现表_输出模板》为基准，
-       其列出的每个模板 ID 都必须登记在 mapping.md 中（防止实现漏掉锁定文案）。
+       其列出的每个模板 ID 都必须登记在 MAPPING.md 中（防止实现漏掉锁定文案）。
        同时核对 SYS 级兜底提示也已登记。
-    4. mapping 覆盖进度：统计 mapping.md 中仍为"待回填"的实现位置数量。
+    4. mapping 覆盖进度：统计 MAPPING.md 中仍为"待回填"的实现位置数量。
 
 用法：
     python scripts\\check_docs.py          # 执行检查，1/2/3 项失败时返回非零退出码
@@ -32,7 +32,7 @@ UI_MD = ROOT / "UI.md"
 TOKENS_CSS = ROOT / "frontend" / "src" / "styles" / "tokens.css"
 FRONTEND_SRC = ROOT / "frontend" / "src"
 SPEC_04 = ROOT / "_SPEC" / "04_字段与输出模板_v1.0.md"
-MAPPING = ROOT / "mapping.md"
+MAPPING = ROOT / "MAPPING.md"
 # 甲方输出模板原件（md 派生版）：模板清单的权威基准
 EVIDENCE_TEMPLATE_DOC = ROOT / "_DEV" / "甲方材料" / "md派生" / "临床流程实现表_输出模板.md"
 
@@ -87,16 +87,16 @@ def check_template_count() -> tuple[bool, str]:
     mapping_ids = set(TEMPLATE_ID.findall(MAPPING.read_text(encoding="utf-8")))
     spec_text = SPEC_04.read_text(encoding="utf-8")
 
-    # 1) 甲方原件中的每个锁定模板都必须登记在 mapping.md
+    # 1) 甲方原件中的每个锁定模板都必须登记在 MAPPING.md
     missing = sorted(canonical_ids - mapping_ids)
     if missing:
-        return False, f"mapping.md 未覆盖的锁定模板（{len(missing)} 个）：{missing}"
+        return False, f"MAPPING.md 未覆盖的锁定模板（{len(missing)} 个）：{missing}"
 
     # 2) SYS 级提示也必须登记（它们是代码中的真实出口，容易漏记）：
     #    2 条临床兜底提示（关闭路径、保留缓解观察）+ 1 条操作提示（重新发起预评估）
     sys_ids = {item for item in mapping_ids if item.startswith("SYS-")}
     if len(sys_ids) != 3:
-        return False, f"mapping.md 中 SYS 级提示应为 3 个，实际 {len(sys_ids)} 个：{sorted(sys_ids)}"
+        return False, f"MAPPING.md 中 SYS 级提示应为 3 个，实际 {len(sys_ids)} 个：{sorted(sys_ids)}"
 
     # 3) _SPEC/04 的计数口径必须是"30 条锁定 OUT-* + 3 条 SYS 级提示"
     if "30 条锁定 `OUT-*` + 3 条 SYS 级提示" not in spec_text:
@@ -109,10 +109,10 @@ def check_template_count() -> tuple[bool, str]:
 
 
 def report_mapping_progress() -> str:
-    """检查 4：报告 mapping.md 的实现位置回填进度（不判定失败）。"""
+    """检查 4：报告 MAPPING.md 的实现位置回填进度（不判定失败）。"""
     text = MAPPING.read_text(encoding="utf-8")
     pending = text.count("待回填")
-    return f"mapping.md 中待回填的实现位置单元格：{pending} 处（M3/M4 完成后应归零）"
+    return f"MAPPING.md 中待回填的实现位置单元格：{pending} 处（M3/M4 完成后应归零）"
 
 
 def main() -> int:

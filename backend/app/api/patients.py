@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.api.flow_common import record_outcome
 from app.core.exceptions import BusinessRuleError, ConflictError, NotFoundError
+from app.core.test_mode import test_capability_enabled
 from app.domain import templates
 from app.domain.states import ST00, ST10
 from app.models.schemas import EventOut, EventPage, PatientCreateIn, PatientOut
@@ -45,6 +46,8 @@ def create_patient(
         gender=payload.gender,
         birth_date=payload.birth_date,
         medical_record_no=payload.medical_record_no,
+        # 测试模式中的测试账号所建患者自动进入测试数据边界；普通入口不提供手工切换
+        is_test_patient=test_capability_enabled(current_user),
     )
     # 审计只记录"谁建了档"，不记录病历内容
     audit_repo.write_audit(

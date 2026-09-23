@@ -19,8 +19,8 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.flow_common import get_patient_or_404, record_outcome, require_state
-from app.core.clock import system_clock
 from app.core.exceptions import BusinessRuleError
+from app.core.test_mode import effective_today_for_patient
 from app.domain import templates
 from app.domain.states import ST40, ST50
 from app.models.clinical import MedicationRestartInput, MedicationRestartResult, ObservationStatus
@@ -34,7 +34,7 @@ router = APIRouter(prefix="/patients", tags=["单元4：缓解观察期"])
 @router.get("/{patient_id}/observation", response_model=ObservationStatus)
 def read_observation(
     patient_id: int,
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ObservationStatus:
     """读取观察期状态（只读，不产生事件）。"""
@@ -44,7 +44,7 @@ def read_observation(
         last_med_stop_date=patient.last_med_stop_date,
         lifestyle_start_date=patient.lifestyle_start_date,
         surgery_date=patient.surgery_date,
-        today=system_clock.today(),
+        today=effective_today_for_patient(current_user, patient),
     )
 
 
@@ -61,7 +61,7 @@ def enter_judgement(
         last_med_stop_date=patient.last_med_stop_date,
         lifestyle_start_date=patient.lifestyle_start_date,
         surgery_date=patient.surgery_date,
-        today=system_clock.today(),
+        today=effective_today_for_patient(current_user, patient),
     )
     # 未到期不得提前判定：系统只放行"到期"这一条路
     if not status.due:

@@ -120,6 +120,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--etmms-space-4);
+  flex-wrap: wrap;
 }
 
 .page-header__titles {
@@ -130,7 +131,7 @@
 }
 
 .page-header__title {
-  font-size: var(--etmms-text-section-title);
+  font-size: var(--etmms-text-page-title);
   font-weight: var(--etmms-weight-medium);
   line-height: var(--etmms-line-normal);
 }
@@ -145,6 +146,54 @@
   align-items: center;
   gap: var(--etmms-space-2);
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ===================== 当前日期 ===================== */
+.date-control {
+  display: flex;
+  align-items: center;
+  gap: var(--etmms-space-2);
+  flex-wrap: wrap;
+  padding: var(--etmms-space-1) var(--etmms-space-2);
+  border-radius: var(--etmms-radius-sm);
+}
+
+.date-control--simulated {
+  background: var(--etmms-warning-container);
+  color: var(--etmms-on-warning-container);
+}
+
+.date-control__label,
+.date-control__readonly,
+.date-control__warning,
+.date-control__error {
+  font-size: var(--etmms-text-caption);
+}
+
+.date-control__warning {
+  font-weight: var(--etmms-weight-semibold);
+}
+
+.date-control__input {
+  height: var(--etmms-button-height);
+  padding: 0 var(--etmms-space-2);
+  border: var(--etmms-border-width) solid var(--etmms-outline);
+  border-radius: var(--etmms-radius-xs);
+  background: var(--etmms-surface);
+  color: var(--etmms-on-surface);
+  font-size: var(--etmms-text-caption);
+}
+
+.date-control__input:focus {
+  border-color: var(--etmms-primary);
+  outline: var(--etmms-border-width) solid var(--etmms-primary);
+  outline-offset: calc(-1 * var(--etmms-border-width));
+}
+
+.date-control__error {
+  color: var(--etmms-error);
 }
 
 /* ===================== 底部动作条 ===================== */
@@ -478,6 +527,68 @@
   line-height: var(--etmms-line-normal);
   /* 临床结论是全屏最重要的文字，允许一处加粗（UI.md 2.4） */
   font-weight: var(--etmms-weight-semibold);
+}
+
+/* ===================== 一级任务面板 ===================== */
+.task-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--etmms-space-2);
+  padding: var(--etmms-space-5);
+  background: var(--etmms-primary-container);
+  color: var(--etmms-on-primary-container);
+  border-radius: var(--etmms-radius-md);
+}
+
+.task-panel__title {
+  font-size: var(--etmms-text-task-title);
+  font-weight: var(--etmms-weight-semibold);
+  line-height: var(--etmms-line-normal);
+}
+
+.task-panel__description {
+  font-size: var(--etmms-text-body);
+}
+
+.task-panel__result {
+  font-size: var(--etmms-text-caption);
+  font-weight: var(--etmms-weight-medium);
+}
+
+/* ===================== 测试工具面板 ===================== */
+.test-tools-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--etmms-space-4);
+  flex-wrap: wrap;
+  padding: var(--etmms-space-4);
+  background: var(--etmms-warning-container);
+  color: var(--etmms-on-warning-container);
+  border: var(--etmms-border-width) solid var(--etmms-warning);
+  border-radius: var(--etmms-radius-sm);
+}
+
+.test-tools-panel__title {
+  font-size: var(--etmms-text-section-title);
+  font-weight: var(--etmms-weight-medium);
+}
+
+.test-tools-panel__description,
+.test-tools-panel__error,
+.test-tools-panel__actions label {
+  font-size: var(--etmms-text-caption);
+}
+
+.test-tools-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--etmms-space-2);
+  flex-wrap: wrap;
+}
+
+.test-tools-panel__error {
+  color: var(--etmms-error);
 }
 
 /* ===================== 分区与卡片 ===================== */

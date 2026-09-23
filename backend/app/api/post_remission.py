@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.flow_common import get_patient_or_404, record_outcome, require_state
-from app.core.clock import system_clock
+from app.core.test_mode import effective_today_for_patient
 from app.domain import enums
 from app.domain.states import ST20, ST31, ST32, ST60
 from app.models.clinical import PostRemissionInput, PostRemissionResult
@@ -43,7 +43,7 @@ def submit_post_remission_review(
     result = evaluate_post_remission(
         source_state,
         payload,
-        system_clock.today(),
+        effective_today_for_patient(current_user, patient),
         remission_confirmed_date=patient.remission_confirmed_date,
     )
 

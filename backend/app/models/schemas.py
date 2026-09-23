@@ -51,6 +51,8 @@ class UserOut(BaseModel):
     username: str
     display_name: str
     role: str
+    is_test_account: bool = False
+    simulated_date: date | None = None
 
 
 class LoginOut(BaseModel):
@@ -83,6 +85,7 @@ class PatientOut(BaseModel):
     gender: str
     birth_date: date
     medical_record_no: str
+    is_test_patient: bool = False
     current_state: str
     stage: str | None = None
     stage_goal: str | None = None
@@ -114,6 +117,7 @@ class EventOut(BaseModel):
     template_id: str | None = None
     output_text: str
     operator_id: int
+    simulated_date: date | None = None
     created_at: datetime
 
 
@@ -122,3 +126,29 @@ class EventPage(BaseModel):
 
     total: int
     items: list[EventOut]
+
+
+# ===================== 测试模式（仅开发验收使用） =====================
+
+
+class TestContextOut(BaseModel):
+    """当前账号的测试能力与日期上下文。"""
+
+    test_mode_enabled: bool
+    can_use_test_tools: bool
+    real_date: date
+    effective_date: date
+    simulated_date: date | None = None
+
+
+class SimulatedDateIn(BaseModel):
+    """设置或清除账号级模拟日期；空值表示恢复真实日期。"""
+
+    simulated_date: date | None = None
+
+
+class DebugJumpIn(BaseModel):
+    """测试患者状态跳转请求。"""
+
+    target_state: str = Field(min_length=4, max_length=4)
+    request_id: str | None = Field(default=None, max_length=64)

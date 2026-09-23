@@ -2,7 +2,7 @@
  * 文件名称：types/index.ts
  * 所属层级：类型定义层（types）
  * 功能说明：与后端 Pydantic 模式对齐的 TypeScript 类型。
- *   字段名与后端保持一致（snake_case），便于对照 `_SPEC/07` 与 `mapping.md`。
+ *   字段名与后端保持一致（snake_case），便于对照 `_SPEC/07` 与 `MAPPING.md`。
  *
  * 修改历史：
  *   - 2026-09-20  v1.0  M5 初始实现
@@ -15,6 +15,8 @@ export interface UserOut {
   username: string
   display_name: string
   role: string
+  is_test_account: boolean
+  simulated_date: string | null
 }
 
 export interface AuthStatusOut {
@@ -35,6 +37,7 @@ export interface Patient {
   gender: string
   birth_date: string
   medical_record_no: string
+  is_test_patient: boolean
   current_state: string
   stage: string | null
   stage_goal: string | null
@@ -66,12 +69,23 @@ export interface EventOut {
   template_id: string | null
   output_text: string
   operator_id: number
+  simulated_date: string | null
   created_at: string
 }
 
 export interface EventPage {
   total: number
   items: EventOut[]
+}
+
+// ===== 测试能力 =====
+
+export interface TestContextOut {
+  test_mode_enabled: boolean
+  can_use_test_tools: boolean
+  real_date: string
+  effective_date: string
+  simulated_date: string | null
 }
 
 // ===== 领域数据（由后端导出，前端不得自行硬编码）=====

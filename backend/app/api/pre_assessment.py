@@ -19,8 +19,8 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.flow_common import get_patient_or_404, record_outcome, require_state
-from app.core.clock import system_clock
 from app.core.exceptions import BusinessRuleError
+from app.core.test_mode import effective_today_for_patient
 from app.domain import enums, templates
 from app.domain.states import ST00, ST10, ST31, ST99
 from app.models.clinical import AcuteStabilizedInput, FullAssessmentResult, PreAssessmentInput, PreAssessmentResult
@@ -97,7 +97,9 @@ def enter_stable_after_acute(
         raise BusinessRuleError("快速建档时至少选择一种干预组合。", code="INTERVENTIONS_REQUIRED")
 
     source_state = patient.current_state
-    next_review = payload.next_review_date or defaults.default_next_review_date(system_clock.today())
+    next_review = payload.next_review_date or defaults.default_next_review_date(
+        effective_today_for_patient(current_user, patient)
+    )
     interventions = "、".join(payload.interventions)
     output_text = templates.render(
         "OUT-E2-STABLE",

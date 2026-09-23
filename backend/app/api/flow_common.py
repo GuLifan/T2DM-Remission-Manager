@@ -19,6 +19,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BusinessRuleError, ConflictError, NotFoundError
+from app.core.test_mode import simulated_date_for_event
 from app.models.patient import Patient
 from app.models.user import User
 from app.repository import audit as audit_repo
@@ -81,6 +82,9 @@ def record_outcome(
     if request_id and events_repo.find_by_request_id(db, patient.id, request_id) is not None:
         raise ConflictError("该操作已经提交过，本次未重复记录。", code="DUPLICATE_REQUEST")
 
+    # 模拟日期只能作用于测试患者；真实患者在任何临床写入发生前即被硬阻断
+    event_simulated_date = simulated_date_for_event(operator, patient)
+
     patients_repo.apply_outcome(db, patient, target_state=target_state, updates=updates)
     events_repo.add_event(
         db,
@@ -94,6 +98,7 @@ def record_outcome(
         output_text=output_text,
         payload=payload,
         request_id=request_id,
+        simulated_date=event_simulated_date,
     )
     # 审计只记录"谁做了什么"，不记录临床输入内容
     audit_repo.write_audit(
@@ -102,6 +107,10 @@ def record_outcome(
         operator_id=operator.id,
         target_type="patient",
         target_id=patient.id,
-        detail={"rule_id": rule_id, "source": source},
+        detail={
+            "rule_id": rule_id,
+            "source": source,
+            "simulated_date": event_simulated_date.isoformat() if event_simulated_date else None,
+        },
     )
     db.commit()

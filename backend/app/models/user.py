@@ -10,9 +10,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import Boolean, Date, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -33,6 +33,10 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     # 角色：本版本仅 doctor，预留 admin
     role: Mapped[str] = mapped_column(String(16), default="doctor")
+    # 测试账号标记：还必须同时开启 ETMMS_TEST_MODE 才能使用测试能力
+    is_test_account: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 账号级模拟日期；空值表示使用真实日期，主动恢复真实日期时清空
+    simulated_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     # 是否启用（停用后不可登录，历史事件保留）
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # 连续登录失败次数与锁定截止时间：基础防护，避免被反复猜密码

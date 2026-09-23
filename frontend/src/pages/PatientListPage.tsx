@@ -16,7 +16,15 @@ import { useState } from 'react'
 
 import { ApiError } from '../api/client'
 import { patientApi } from '../api/endpoints'
-import { EmptyState, ErrorBanner, FieldRow, LoadingBlock, PageHeader } from '../components'
+import {
+  DateControl,
+  EmptyState,
+  ErrorBanner,
+  FieldRow,
+  LoadingBlock,
+  PageHeader,
+  StatusBadge,
+} from '../components'
 import { useAsync } from '../hooks/useAsync'
 import type { Patient, UserOut } from '../types'
 
@@ -68,9 +76,12 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
         title="患者管理"
         context={`当前医生：${currentUser.display_name}`}
         actions={
-          <button type="button" className="btn btn--text" onClick={onLogout}>
-            退出登录
-          </button>
+          <>
+            <DateControl />
+            <button type="button" className="btn btn--text" onClick={onLogout}>
+              退出登录
+            </button>
+          </>
         }
       />
 
@@ -169,7 +180,10 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
                         <td>{patient.gender}</td>
                         <td className="num">{patient.medical_record_no}</td>
                         {/* 只显示自然语言环节名称，不显示状态代码 */}
-                        <td>{patient.stage ?? '常规糖尿病综合管理'}</td>
+                        <td>
+                          {patient.stage ?? '常规糖尿病综合管理'}
+                          {patient.is_test_patient ? <StatusBadge tone="neutral">测试患者</StatusBadge> : null}
+                        </td>
                         <td className="table__actions">
                           <button
                             type="button"

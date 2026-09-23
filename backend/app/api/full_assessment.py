@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.flow_common import get_patient_or_404, record_outcome, require_state
-from app.core.clock import system_clock
+from app.core.test_mode import effective_today_for_patient
 from app.domain.states import ST00, ST20, ST31, ST32
 from app.models.clinical import FullAssessmentInput, FullAssessmentResult
 from app.models.user import User
@@ -39,7 +39,11 @@ def submit_full_assessment(
     require_state(patient, (ST20,), "完整评估")
     source_state = patient.current_state
 
-    result = evaluate_full_assessment(source_state, payload, system_clock.today())
+    result = evaluate_full_assessment(
+        source_state,
+        payload,
+        effective_today_for_patient(current_user, patient),
+    )
 
     # 按结论更新患者档案字段：启动时写入计划，暂缓时保持不变，不启动时清空计划
     if result.target_state in (ST31, ST32):

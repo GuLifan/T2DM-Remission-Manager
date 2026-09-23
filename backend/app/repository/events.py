@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -33,6 +34,7 @@ def add_event(
     template_id: str | None = None,
     payload: dict | None = None,
     request_id: str | None = None,
+    simulated_date: date | None = None,
 ) -> Event:
     """追加一条事件流水。
 
@@ -40,6 +42,7 @@ def add_event(
         source (str): doctor（医生操作）/ system（系统自动动作）。
         payload (dict | None): 本次输入快照；包含被忽略的分支与原因，保证可追溯。
         request_id (str | None): 客户端请求标识，用于识别重复提交。
+        simulated_date (date | None): 本次事件实际采用的模拟日期；真实日期下为空。
     """
     event = Event(
         patient_id=patient_id,
@@ -53,6 +56,7 @@ def add_event(
         # ensure_ascii=False 便于人工查看中文输入快照
         payload=json.dumps(payload, ensure_ascii=False) if payload is not None else None,
         request_id=request_id,
+        simulated_date=simulated_date,
     )
     db.add(event)
     db.flush()

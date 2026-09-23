@@ -30,6 +30,8 @@ class Patient(Base):
     birth_date: Mapped[date] = mapped_column(Date)
     # 病历号唯一：避免同一患者被重复建档
     medical_record_no: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    # 测试患者标记：测试跳转与模拟日期只能作用于此类患者
+    is_test_patient: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # 当前流程状态（ST00–ST99）；前台只显示中文名称，不显示代码
     current_state: Mapped[str] = mapped_column(String(8), default="ST00", index=True)

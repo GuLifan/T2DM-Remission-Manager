@@ -10,9 +10,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -42,4 +42,6 @@ class Event(Base):
     payload: Mapped[str | None] = mapped_column(Text, nullable=True)
     # 事件编号（幂等用）：客户端重复提交时用于识别同一次操作
     request_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # 模拟日期审计：事件使用真实日期时为空；使用模拟日期时保存实际日期
+    simulated_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)

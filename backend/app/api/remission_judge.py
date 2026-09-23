@@ -23,8 +23,8 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.flow_common import get_patient_or_404, record_outcome, require_state
-from app.core.clock import system_clock
 from app.core.exceptions import BusinessRuleError
+from app.core.test_mode import effective_today_for_patient
 from app.domain import enums
 from app.domain.states import ST31, ST32, ST50
 from app.models.clinical import RemissionConfirmInput, RemissionJudgeInput, RemissionJudgeResult
@@ -36,12 +36,12 @@ from app.services.remission_judge import check_remission, confirm_remission
 router = APIRouter(prefix="/patients", tags=["单元5：缓解判定"])
 
 
-def _run_check(patient, payload: RemissionJudgeInput) -> RemissionJudgeResult:
+def _run_check(patient, payload: RemissionJudgeInput, current_user: User) -> RemissionJudgeResult:
     """执行客观条件核对（纯函数调用，不触碰数据库）。"""
     return check_remission(
         patient.current_state,
         payload,
-        today=system_clock.today(),
+        today=effective_today_for_patient(current_user, patient),
         earliest_judge_date=patient.earliest_judge_date,
         has_glucose_lowering_drug=patient.has_glucose_lowering_drug,
     )
@@ -51,13 +51,13 @@ def _run_check(patient, payload: RemissionJudgeInput) -> RemissionJudgeResult:
 def check(
     patient_id: int,
     payload: RemissionJudgeInput,
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> RemissionJudgeResult:
     """核对客观条件（只读，不写库、不写事件）。"""
     patient = get_patient_or_404(db, patient_id)
     require_state(patient, (ST50,), "缓解判定")
-    return _run_check(patient, payload)
+    return _run_check(patient, payload, current_user)
 
 
 @router.post("/{patient_id}/remission-judge/route", response_model=RemissionJudgeResult)
@@ -75,7 +75,7 @@ def route(
     patient = get_patient_or_404(db, patient_id)
     require_state(patient, (ST50,), "缓解判定")
     source_state = patient.current_state
-    result = _run_check(patient, payload)
+    result = _run_check(patient, payload, current_user)
     target_state = result.target_state
 
     # 需要医生选择返回阶段的分支：未选择时不落库，只把提示返回给前台

@@ -67,6 +67,15 @@ class AuthError(EtmmsError):
         super().__init__(message, code)
 
 
+class ForbiddenError(EtmmsError):
+    """账号已登录，但当前操作不在其授权范围内。"""
+
+    status_code = 403
+
+    def __init__(self, message: str = "当前账号无权执行此操作。", code: str = "FORBIDDEN") -> None:
+        super().__init__(message, code)
+
+
 class ConflictError(EtmmsError):
     """状态冲突、重复提交或并发修改。"""
 

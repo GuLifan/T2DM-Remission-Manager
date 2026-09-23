@@ -120,12 +120,12 @@
 
 ## 八、第二轮第一批需求映射
 
-| 需求 | 约束来源 | 计划实现位置 | 计划测试 |
+| 需求 | 约束来源 | 实现位置 | 测试 |
 | --- | --- | --- | --- |
-| FR-0-07 / UX-47 测试账号跳转 | `_SPEC/02` 第十节、`_SPEC/06` R2-05/R2-13、`_SPEC/07` 16.2 | `config.py`、测试能力接口、患者/事件模型、前端工作台 | 后端三重守卫与 debug 事件；前端测试导航 |
-| FR-0-15 / UX-58 模拟日期 | `_SPEC/02` 第十节、`_SPEC/06` R2-06/R2-14、`UI.md` 4.2 | 账号/事件模型、有效日期依赖、日期接口、页头日期控件 | 账号隔离、持久化、真实患者阻断、事件模拟日期 |
-| UX-46 文件名大小写 | `_SPEC/09` 5.2 | 全部有效文档、脚本和源代码注释统一引用 `MAPPING.md` | `scripts/check_docs.py` 在大小写敏感环境可定位文件 |
-| `TaskPanel` UI 门禁 | `UI.md` 1.3–1.5、`_SPEC/08` 8.1 | 通用组件与全部当前流程页面 | Token 使用率归零；页面级渲染测试 |
+| FR-0-07 / UX-47 测试账号跳转 | `_SPEC/02` 第十节、`_SPEC/06` R2-05/R2-13、`_SPEC/07` 16.2 | `backend/app/core/test_mode.py`、`api/test_support.py::debug_jump_state`、迁移 `9c4a2f1b7e10`、`frontend/src/pages/PatientWorkspacePage.tsx`、`TestToolsPanel.tsx` | `backend/tests/test_test_support.py`；`PatientWorkspacePage.test.tsx` |
+| FR-0-15 / UX-58 模拟日期 | `_SPEC/02` 第十节、`_SPEC/06` R2-06/R2-14、`UI.md` 4.2 | `core/test_mode.py`、六个流程 API 的有效日期注入、`api/test_support.py`、`DateControl.tsx` | `backend/tests/test_test_support.py`；`DateControl.test.tsx` |
+| UX-46 文件名大小写 | `_SPEC/09` 5.2 | Git 索引文件名 `MAPPING.md`；`scripts/check_docs.py` 与有效文档/源码注释统一大写引用 | `python scripts/check_docs.py` 在当前工作区 3/3 通过 |
+| `TaskPanel` UI 门禁 | `UI.md` 1.3–1.5、`_SPEC/08` 8.1 | `frontend/src/components/TaskPanel.tsx`，由 `PatientWorkspacePage.tsx` 统一覆盖当前流程页面 | Token 使用率归零；`PatientWorkspacePage.test.tsx` |
 
 ---
 

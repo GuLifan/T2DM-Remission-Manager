@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -121,4 +121,10 @@ def register_login_failure(db: Session, user: User) -> None:
         # 达到阈值：锁定一段时间，避免被持续猜密码
         user.locked_until = datetime.now() + timedelta(minutes=LOCK_MINUTES)
         user.failed_login_count = 0
+    db.flush()
+
+
+def set_simulated_date(db: Session, user: User, value: date | None) -> None:
+    """保存账号级模拟日期；空值表示恢复真实日期。"""
+    user.simulated_date = value
     db.flush()

@@ -24,6 +24,7 @@ const PATIENT = {
   gender: '女',
   birth_date: '1980-01-01',
   medical_record_no: 'MRN-UI-0001',
+  is_test_patient: false,
   // 当前处于阶段复评（第 3 个单元）：前两个单元已完成，后三个未到达
   current_state: 'ST32',
   stage: '缓解诱导',
@@ -61,6 +62,7 @@ const EVENTS = {
       template_id: 'OUT-E1-ENTER',
       output_text: '当前可进入完整缓解评估。',
       operator_id: 1,
+      simulated_date: null,
       created_at: '2026-09-10T10:00:00',
     },
     {
@@ -72,20 +74,49 @@ const EVENTS = {
       template_id: 'SYS-ST00-REOPEN',
       output_text: '已重新发起60秒缓解预评估，请完成核心五问。',
       operator_id: 1,
+      simulated_date: null,
       created_at: '2026-09-09T09:00:00',
     },
   ],
 }
 
 /** 按 URL 分发的 fetch 桩。 */
-function stubFetch(branches: unknown = []) {
+function stubFetch(
+  branches: unknown = [],
+  options?: {
+    patient?: typeof PATIENT
+    canUseTestTools?: boolean
+  },
+) {
+  const loadedPatient = options?.patient ?? PATIENT
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const url = String(input)
     if (url.includes('/api/patients/7/events')) return Promise.resolve(jsonOk(EVENTS))
-    if (url.includes('/api/patients/7')) return Promise.resolve(jsonOk(PATIENT))
+    if (url.includes('/api/patients/7/debug/jump-state')) {
+      return Promise.resolve(jsonOk({ ...loadedPatient, current_state: 'ST40', stage: null }))
+    }
+    if (url.includes('/api/patients/7')) return Promise.resolve(jsonOk(loadedPatient))
     if (url.includes('/api/domain/flow-units')) return Promise.resolve(jsonOk(FLOW_UNITS))
     if (url.includes('/api/domain/branches')) return Promise.resolve(jsonOk(branches))
-    if (url.includes('/api/domain/states')) return Promise.resolve(jsonOk([]))
+    if (url.includes('/api/domain/states')) {
+      return Promise.resolve(
+        jsonOk([
+          { code: 'ST32', name: '主动管理—缓解诱导阶段' },
+          { code: 'ST40', name: '缓解观察期' },
+        ]),
+      )
+    }
+    if (url.includes('/api/test-context')) {
+      return Promise.resolve(
+        jsonOk({
+          test_mode_enabled: options?.canUseTestTools ?? false,
+          can_use_test_tools: options?.canUseTestTools ?? false,
+          real_date: '2026-09-24',
+          effective_date: '2026-09-24',
+          simulated_date: null,
+        }),
+      )
+    }
     return Promise.resolve(jsonOk({}))
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -107,7 +138,14 @@ describe('PatientWorkspacePage 导航规则', () => {
     render(
       <PatientWorkspacePage
         patientId={7}
-        currentUser={{ id: 1, username: 'doctor', display_name: '张医生', role: 'doctor' }}
+        currentUser={{
+          id: 1,
+          username: 'doctor',
+          display_name: '张医生',
+          role: 'doctor',
+          is_test_account: false,
+          simulated_date: null,
+        }}
         onBack={() => undefined}
       />,
     )
@@ -127,7 +165,14 @@ describe('PatientWorkspacePage 导航规则', () => {
     render(
       <PatientWorkspacePage
         patientId={7}
-        currentUser={{ id: 1, username: 'doctor', display_name: '张医生', role: 'doctor' }}
+        currentUser={{
+          id: 1,
+          username: 'doctor',
+          display_name: '张医生',
+          role: 'doctor',
+          is_test_account: false,
+          simulated_date: null,
+        }}
         onBack={() => undefined}
       />,
     )
@@ -163,7 +208,14 @@ describe('PatientWorkspacePage 导航规则', () => {
     render(
       <PatientWorkspacePage
         patientId={7}
-        currentUser={{ id: 1, username: 'doctor', display_name: '张医生', role: 'doctor' }}
+        currentUser={{
+          id: 1,
+          username: 'doctor',
+          display_name: '张医生',
+          role: 'doctor',
+          is_test_account: false,
+          simulated_date: null,
+        }}
         onBack={() => undefined}
       />,
     )
@@ -177,5 +229,41 @@ describe('PatientWorkspacePage 导航规则', () => {
     })
     // 未选中的分支必须显式说明"本次未生效"，不静默丢弃
     expect(screen.getByText(/本次未生效的分支/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '主动管理—缓解诱导阶段' })).toBeInTheDocument()
+  })
+
+  it('测试账号可让测试患者直接进入未来环节，并调用专用 debug 接口', async () => {
+    const fetchMock = stubFetch([], {
+      patient: { ...PATIENT, is_test_patient: true },
+      canUseTestTools: true,
+    })
+    const user = userEvent.setup()
+    render(
+      <PatientWorkspacePage
+        patientId={7}
+        currentUser={{
+          id: 1,
+          username: 'admin',
+          display_name: '管理员',
+          role: 'doctor',
+          is_test_account: true,
+          simulated_date: null,
+        }}
+        onBack={() => undefined}
+      />,
+    )
+
+    const observation = await screen.findByRole('button', { name: /缓解观察期/ })
+    expect(observation).toBeEnabled()
+    expect(screen.getByText('测试工具')).toBeInTheDocument()
+    expect(screen.getAllByText('测试患者').length).toBeGreaterThanOrEqual(1)
+
+    await user.click(observation)
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/patients/7/debug/jump-state',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
   })
 })

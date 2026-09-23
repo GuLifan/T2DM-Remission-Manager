@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.flow_common import get_patient_or_404, record_outcome, require_state
-from app.core.clock import system_clock
+from app.core.test_mode import effective_today_for_patient
 from app.domain.states import ST00, ST31, ST32
 from app.models.clinical import PhaseReviewInput, PhaseReviewResult
 from app.models.user import User
@@ -47,7 +47,7 @@ def submit_phase_review(
     result = evaluate_phase_review(
         source_state,
         payload,
-        system_clock.today(),
+        effective_today_for_patient(current_user, patient),
         # 观察期时间锚点由患者档案提供（如适用）
         lifestyle_start_date=patient.lifestyle_start_date,
         surgery_date=patient.surgery_date,

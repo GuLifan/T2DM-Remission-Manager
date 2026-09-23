@@ -2,7 +2,7 @@
  * 文件名称：tokens.css
  * 所属层级：全局样式（styles）
  * 功能说明：Design Token 的唯一来源，逐字对应根目录 `UI.md` 第 2 节。
- *   ⚠️ 任何 Token 的新增、修改、删除都必须先改 `UI.md` 与 `mapping.md`，
+ *   ⚠️ 任何 Token 的新增、修改、删除都必须先改 `UI.md` 与 `MAPPING.md`，
  *      再改本文件；未使用的 Token 视为缺陷（见 UI.md 第 6 节自查机制）。
  *
  * 修改历史：

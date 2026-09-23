@@ -59,6 +59,8 @@ class Settings(BaseSettings):
     # 会话有效期（小时）；本地单机使用，默认 8 小时覆盖一个门诊班次
     session_hours: int = 8
     log_level: str = "INFO"
+    # 测试后门总开关：默认关闭，交付环境不得开启
+    test_mode: bool = False
     # 数据目录：数据库与日志的落盘位置
     data_dir: Path = Field(default_factory=default_data_dir)
     db_filename: str = "etmms.db"

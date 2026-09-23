@@ -28,6 +28,7 @@ def create_patient(
     gender: str,
     birth_date,
     medical_record_no: str,
+    is_test_patient: bool = False,
 ) -> Patient:
     """建立患者档案（新患者一律从 ST00 开始）。"""
     patient = Patient(
@@ -35,6 +36,7 @@ def create_patient(
         gender=gender,
         birth_date=birth_date,
         medical_record_no=medical_record_no,
+        is_test_patient=is_test_patient,
         current_state=INITIAL_STATE,
     )
     db.add(patient)
