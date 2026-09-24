@@ -168,3 +168,13 @@
 | 81 | 2026-09-24 | 修复浏览器走查发现的当前环节显示并复核（提权） | `PatientListPage.tsx` 改用后端 `/api/domain/states`；新增页面回归测试；本地提交 `b5b4db4` | require_escalated（Vite 子进程 + Git 元数据写入） | 原列表误用 `stage`，导致 ST40/ST50/ST60 显示为“常规管理”；修复后前端 **14 passed / 6 files**，lint 与 build 全绿；未推送、未合并 `main`。 |
 | 82 | 2026-09-24 | 验收后状态核对与最终回归（提权只读） | 开发库账号/患者/debug 事件；后端 pytest + ruff | require_escalated（uv 缓存，只读数据库） | 核对 `admin.simulated_date=NULL`、`MRN-DEMO-002.current_state=ST50`、debug 事件 3 条；最终后端 **152 passed**、ruff 全绿，文档门禁 3/3。 |
 | 83 | 2026-09-24 | 第一批交接资料收尾（提权 Git 写入） | `CHANGELOG.md`、`HANDOVER.md`、`ACCESS.md`、`_SPEC/08`、`_SPEC/09` | require_escalated（Git 元数据写入） | 回填第一批 Gate、处理结论、质量基线与下一批入口；仅提交本地 `develop`，未推送、未合并 `main`。 |
+
+## 二之十、第二轮第二批档案与录入（2026-09-24）
+
+| 序号 | 时间 | 行为 | 对象 | 权限模式 | 备注 |
+| --- | --- | --- | --- | --- | --- |
+| 84 | 2026-09-24 | 第二批约束定稿（提权 Git 写入） | 本地 `develop` 提交 `d9c22f6`；`UI.md`、`_SPEC/04/07/08`、`MAPPING.md` | require_escalated（Git 元数据写入） | 锁定开放注册、69 科室、出生年月、xlsx/csv 导入与完善门禁、结构化诊断/药物、BMI 最新快照、日期文本格式、1120px 居中与页脚；未推送、未合并 `main`。 |
+| 85 | 2026-09-24 | 联网解析并锁定第二批依赖 | `backend/pyproject.toml`、`backend/uv.lock`：`openpyxl 3.1.5`、`python-multipart 0.0.32` 及传递依赖 | require_escalated（联网 + uv 项目环境） | 只更新项目内隔离环境与锁文件，未修改全局 Python；首次测试同步依赖时出现跨盘 hardlink 降级为复制的非失败告警。 |
+| 86 | 2026-09-24 | 执行并核对第二批开发库迁移 | `data/runtime/etmms.db`：`9c4a2f1b7e10` → `4f8e1c2d9a70` | require_escalated（开发库写入） | 新增科室字典、账号科室、患者科室/联系方式/创建者/完善标记/身高体重BMI。只读核对结果：69 科室；4 名既有患者全部保持资料已完善，且创建者均成功回填。首次核对误用不存在的 `database_path` 配置属性而失败，未产生写入；改用 `database_url` 后通过。 |
+| 87 | 2026-09-24 | 第二批自动化质量复核与本地实现提交 | 后端 pytest + ruff；前端 build + lint + Vitest；文档门禁；本地 `develop` 提交 `c2f15df` / `c89c8c5` | require_escalated（uv 缓存、Vite 子进程、Git 元数据写入） | 后端 **156 passed**、ruff 全绿；前端生产构建通过、lint 无告警、**17 passed / 7 files**。新增覆盖开放注册、69 科室、csv/xlsx、重复跳过、资料完善门禁、BMI 持久化、日期与单位控件；未推送、未合并 `main`。 |
+| 88 | 2026-09-24 | 第二批真实浏览器走查 | 后端 127.0.0.1:8088（测试模式）、前端 127.0.0.1:5173、Codex 内置浏览器 | require_escalated + 本机浏览器操作 + 开发库测试患者写入 | 核验患者建档字段、69 科室、导入对话框、70kg/175cm→BMI 22.9、完整评估自动带入、诊断与药物字典、“其他”补充框、日期格式、版本页脚。走查使用 `MRN-DEMO-001`，最终恢复 ST32；保留 4 条可识别 debug 事件、1 条预评估事件及测试测量快照 70kg/175cm/BMI22.9。两项服务均已停止。 |
