@@ -48,6 +48,7 @@ def create_user(
     username: str,
     display_name: str,
     password: str,
+    department: str | None = None,
     role: str = "doctor",
     is_active: bool = True,
 ) -> User:
@@ -58,6 +59,7 @@ def create_user(
         username (str): 登录名。
         display_name (str): 界面显示姓名（会记入事件流水的操作者）。
         password (str): 明文密码，仅在此处使用，不落盘。
+        department (str | None): 所属科室，注册时可不填。
         role (str): 角色，本版本为 doctor。
         is_active (bool): 是否可登录。
     """
@@ -65,6 +67,7 @@ def create_user(
         username=username,
         display_name=display_name,
         password_hash=hash_password(password),
+        department=department,
         role=role,
         is_active=is_active,
         failed_login_count=0,

@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.api.flow_common import get_patient_or_404, record_outcome, require_state
+from app.api.flow_common import get_patient_or_404, record_outcome, require_profile_complete, require_state
 from app.core.exceptions import BusinessRuleError
 from app.core.test_mode import effective_today_for_patient
 from app.domain import enums, templates
@@ -29,6 +29,7 @@ from app.repository import events as events_repo
 from app.repository.database import get_db
 from app.services import defaults
 from app.services.pre_assessment import evaluate_pre_assessment
+from app.utils.measurements import calculate_bmi
 
 router = APIRouter(prefix="/patients", tags=["单元1：60秒缓解预评估"])
 
@@ -48,15 +49,27 @@ def submit_pre_assessment(
 ) -> PreAssessmentResult:
     """提交 60 秒预评估，得到三类主结论之一。"""
     patient = get_patient_or_404(db, patient_id)
+    require_profile_complete(patient)
     require_state(patient, (ST10,), "60秒缓解预评估")
     source_state = patient.current_state
 
     result = evaluate_pre_assessment(source_state, payload)
 
+    # 身高与体重必须成对记录，避免档案里长期留下无法解释的半组测量值。
+    if (payload.f018_weight is None) != (payload.f019_height is None):
+        raise BusinessRuleError("身高和体重需同时填写，或同时留空。", code="MEASUREMENTS_INCOMPLETE")
+    measurement_updates: dict[str, object] = {}
+    if payload.f018_weight is not None and payload.f019_height is not None:
+        measurement_updates = {
+            "weight_kg": payload.f018_weight,
+            "height_cm": payload.f019_height,
+            "bmi": calculate_bmi(payload.f019_height, payload.f018_weight),
+        }
+
     # 回到常规管理时清空阶段相关字段；暂缓（自环）与进入完整评估时不动这些字段
-    updates: dict[str, object] | None = None
+    updates: dict[str, object] = measurement_updates
     if result.target_state == ST00:
-        updates = {"stage": None, "stage_goal": None, "interventions": None, "next_review_date": None}
+        updates.update({"stage": None, "stage_goal": None, "interventions": None, "next_review_date": None})
 
     record_outcome(
         db,

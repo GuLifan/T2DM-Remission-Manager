@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, String
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -28,10 +28,22 @@ class Patient(Base):
     name: Mapped[str] = mapped_column(String(64))
     gender: Mapped[str] = mapped_column(String(8))
     birth_date: Mapped[date] = mapped_column(Date)
-    # 病历号唯一：避免同一患者被重复建档
+    # 数据库沿用历史字段名；医生界面统一显示“住院号”
     medical_record_no: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    # 当前科室必填；联系方式选填，不强制医生编造缺失信息
+    department: Mapped[str] = mapped_column(String(128), default="内分泌科")
+    contact_phone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # 创建者本批只记录不执行业务权限；第三批再启用账号隔离守卫
+    created_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    # 批量导入患者必须先完善资料；手工建档默认已完善
+    profile_complete: Mapped[bool] = mapped_column(Boolean, default=True)
     # 测试患者标记：测试跳转与模拟日期只能作用于此类患者
     is_test_patient: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # 最新身高、体重与 BMI 快照；第二批不建趋势表，不参与临床准入
+    height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    bmi: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # 当前流程状态（ST00–ST99）；前台只显示中文名称，不显示代码
     current_state: Mapped[str] = mapped_column(String(8), default="ST00", index=True)

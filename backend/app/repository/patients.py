@@ -28,6 +28,10 @@ def create_patient(
     gender: str,
     birth_date,
     medical_record_no: str,
+    department: str = "内分泌科",
+    contact_phone: str | None = None,
+    created_by: int | None = None,
+    profile_complete: bool = True,
     is_test_patient: bool = False,
 ) -> Patient:
     """建立患者档案（新患者一律从 ST00 开始）。"""
@@ -36,12 +40,38 @@ def create_patient(
         gender=gender,
         birth_date=birth_date,
         medical_record_no=medical_record_no,
+        department=department,
+        contact_phone=contact_phone,
+        created_by=created_by,
+        profile_complete=profile_complete,
         is_test_patient=is_test_patient,
         current_state=INITIAL_STATE,
     )
     db.add(patient)
     db.flush()
     return patient
+
+
+def update_profile(
+    db: Session,
+    patient: Patient,
+    *,
+    name: str,
+    gender: str,
+    birth_date,
+    medical_record_no: str,
+    department: str,
+    contact_phone: str | None,
+) -> None:
+    """更新患者基本资料并解除“待完善”门禁。"""
+    patient.name = name
+    patient.gender = gender
+    patient.birth_date = birth_date
+    patient.medical_record_no = medical_record_no
+    patient.department = department
+    patient.contact_phone = contact_phone
+    patient.profile_complete = True
+    db.flush()
 
 
 def get_patient(db: Session, patient_id: int) -> Patient | None:

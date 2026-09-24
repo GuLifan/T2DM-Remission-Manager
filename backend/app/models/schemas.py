@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # ===================== 账号与登录 =====================
 
@@ -35,6 +35,29 @@ class BootstrapIn(BaseModel):
     password: str = Field(min_length=8, max_length=128, description="登录密码（至少 8 位）")
 
 
+class RegisterIn(BaseModel):
+    """开放注册请求；注册成功后不自动登录。"""
+
+    username: str = Field(min_length=3, max_length=64, description="登录名")
+    display_name: str = Field(min_length=1, max_length=64, description="医师姓名")
+    department: str | None = Field(default=None, max_length=128, description="所属科室（选填）")
+    password: str = Field(min_length=8, max_length=128)
+    password_confirm: str = Field(min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> RegisterIn:
+        """两次密码必须一致，避免只在前端校验而被接口绕过。"""
+        if self.password != self.password_confirm:
+            raise ValueError("两次输入的密码不一致。")
+        return self
+
+
+class RegisterOut(BaseModel):
+    """开放注册结果。"""
+
+    message: str
+
+
 class LoginIn(BaseModel):
     """登录请求。"""
 
@@ -50,6 +73,7 @@ class UserOut(BaseModel):
     id: int
     username: str
     display_name: str
+    department: str | None = None
     role: str
     is_test_account: bool = False
     simulated_date: date | None = None
@@ -67,12 +91,24 @@ class LoginOut(BaseModel):
 
 
 class PatientCreateIn(BaseModel):
-    """建档请求（最小集：姓名、性别、出生日期、病历号）。"""
+    """手工建档请求；出生日期的日固定为 1，界面只录入年月。"""
 
     name: str = Field(min_length=1, max_length=64)
     gender: str = Field(pattern="^[男女]$", description="男 / 女")
     birth_date: date
-    medical_record_no: str = Field(min_length=1, max_length=64, description="病历号（唯一）")
+    medical_record_no: str = Field(min_length=1, max_length=64, description="住院号（唯一）")
+    department: str = Field(default="内分泌科", min_length=1, max_length=128, description="当前科室")
+    contact_phone: str | None = Field(default=None, max_length=64, description="联系方式（选填）")
+
+    @field_validator("birth_date")
+    @classmethod
+    def birth_month_only(cls, value: date) -> date:
+        """出生信息只精确到月，接口统一把日固定为 1。"""
+        return value.replace(day=1)
+
+
+class PatientProfileUpdateIn(PatientCreateIn):
+    """完善患者资料；住院号仍需保持全局唯一。"""
 
 
 class PatientOut(BaseModel):
@@ -85,7 +121,14 @@ class PatientOut(BaseModel):
     gender: str
     birth_date: date
     medical_record_no: str
+    department: str
+    contact_phone: str | None = None
+    created_by: int | None = None
+    profile_complete: bool = True
     is_test_patient: bool = False
+    height_cm: float | None = None
+    weight_kg: float | None = None
+    bmi: float | None = None
     current_state: str
     stage: str | None = None
     stage_goal: str | None = None
@@ -99,6 +142,24 @@ class PatientOut(BaseModel):
     has_glucose_lowering_drug: bool | None = None
     drug_purpose: str | None = None
     created_at: datetime
+
+
+class ImportRowResult(BaseModel):
+    """批量导入单行结果。"""
+
+    row: int
+    medical_record_no: str | None = None
+    status: str = Field(description="success / skipped / failed")
+    message: str
+
+
+class PatientImportOut(BaseModel):
+    """批量导入汇总与逐行结果。"""
+
+    success_count: int
+    skipped_count: int
+    failed_count: int
+    rows: list[ImportRowResult]
 
 
 # ===================== 临床事件流水 =====================

@@ -11,9 +11,10 @@
 
 from app.models.audit import AuditLog
 from app.models.base import Base
+from app.models.department import Department
 from app.models.event import Event
 from app.models.meta import AppMeta
 from app.models.patient import Patient
 from app.models.user import User
 
-__all__ = ["Base", "User", "Patient", "Event", "AuditLog", "AppMeta"]
+__all__ = ["Base", "User", "Patient", "Event", "AuditLog", "AppMeta", "Department"]

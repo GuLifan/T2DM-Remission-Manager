@@ -19,9 +19,10 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.core.exceptions import BusinessRuleError, ConflictError
 from app.core.security import create_session_token, verify_password
-from app.models.schemas import AuthStatusOut, BootstrapIn, LoginIn, LoginOut, UserOut
+from app.models.schemas import AuthStatusOut, BootstrapIn, LoginIn, LoginOut, RegisterIn, RegisterOut, UserOut
 from app.models.user import User
 from app.repository import audit as audit_repo
+from app.repository import departments as departments_repo
 from app.repository import users as users_repo
 from app.repository.database import get_db
 
@@ -61,6 +62,39 @@ def bootstrap(payload: BootstrapIn, db: Session = Depends(get_db)) -> LoginOut:
     token, expires_at = create_session_token(user.id)
     db.commit()
     return LoginOut(token=token, expires_at=expires_at, user=UserOut.model_validate(user))
+
+
+@router.post("/register", response_model=RegisterOut, status_code=201)
+def register(payload: RegisterIn, db: Session = Depends(get_db)) -> RegisterOut:
+    """开放注册医生账号；注册成功后必须返回登录页自行登录。"""
+    username = payload.username.strip()
+    display_name = payload.display_name.strip()
+    if len(username) < 3:
+        raise BusinessRuleError("登录名至少 3 个非空字符。", code="USERNAME_INVALID")
+    if not display_name:
+        raise BusinessRuleError("请填写医师姓名。", code="DISPLAY_NAME_REQUIRED")
+    if users_repo.get_by_username(db, username) is not None:
+        raise ConflictError("该登录名已存在，请更换后重试。", code="USERNAME_DUPLICATED")
+    department = payload.department.strip() if payload.department else None
+    if department and not departments_repo.is_active_name(db, department):
+        raise BusinessRuleError("所选科室不在当前科室字典中，请重新选择。", code="DEPARTMENT_INVALID")
+    user = users_repo.create_user(
+        db,
+        username=username,
+        display_name=display_name,
+        password=payload.password,
+        department=department,
+    )
+    audit_repo.write_audit(
+        db,
+        action="account_register",
+        operator_id=user.id,
+        target_type="user",
+        target_id=user.id,
+        detail={"username": user.username, "department": user.department},
+    )
+    db.commit()
+    return RegisterOut(message="注册成功，请使用新账号登录。")
 
 
 @router.post("/login", response_model=LoginOut)

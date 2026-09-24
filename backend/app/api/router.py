@@ -20,12 +20,15 @@ from app.api import (
     phase_review,
     post_remission,
     pre_assessment,
+    reference_data,
     remission_judge,
     test_support,
 )
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(auth.router)
+# 登录前注册页也要读取科室字典，因此参考数据接口不要求登录
+api_router.include_router(reference_data.router)
 api_router.include_router(patients.router)
 # 领域数据：状态、流程单元、分支优先级（供前端渲染，避免前后端各写一套）
 api_router.include_router(domain_data.router)

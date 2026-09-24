@@ -29,6 +29,8 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     # 界面显示姓名；事件流水的操作者展示用此字段
     display_name: Mapped[str] = mapped_column(String(64))
+    # 所属科室：医生注册时选填，仅用于展示与责任追溯
+    department: Mapped[str | None] = mapped_column(String(128), nullable=True)
     # 密码哈希（scrypt 加盐；禁止明文，禁止可逆加密）
     password_hash: Mapped[str] = mapped_column(String(255))
     # 角色：本版本仅 doctor，预留 admin

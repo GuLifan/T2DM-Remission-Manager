@@ -78,3 +78,26 @@ OPT_TREATMENT_CHANGES: tuple[str, ...] = ("无", "新增", "减量", "停用", "
 OPT_CONSTRAINTS: tuple[str, ...] = ("CKD", "ASCVD或心衰", "严重视网膜病变", "低血糖", "衰弱", "相关用药")
 OPT_RISK_TRIGGERS: tuple[str, ...] = ("体重反弹", "急性疾病", "糖皮质激素", "妊娠", "手术", "明显生活方式改变")
 OPT_DRUG_PURPOSE: tuple[str, ...] = (PURPOSE_GLYCEMIC, PURPOSE_ORGAN, PURPOSE_WEIGHT, PURPOSE_OTHER)
+
+# ===== 第二批结构化参考字典（R2-02 / R2-03 已审定）=====
+DIAGNOSIS_BASES: tuple[str, ...] = (
+    "典型症状 + 随机血糖达标",
+    "空腹血糖达标",
+    "OGTT 2 小时血糖达标",
+    "HbA1c 达标",
+    "两次以上异常血糖结果",
+    "医生综合判断 / 其他",
+)
+
+GLUCOSE_LOWERING_DRUG_CLASSES: tuple[str, ...] = (
+    "二甲双胍类",
+    "磺脲类",
+    "格列奈类",
+    "α-糖苷酶抑制剂",
+    "DPP-4 抑制剂",
+    "SGLT2 抑制剂",
+    "GLP-1 受体激动剂",
+    "噻唑烷二酮类",
+    "胰岛素及其类似物",
+    "其他",
+)

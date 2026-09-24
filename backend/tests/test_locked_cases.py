@@ -68,7 +68,7 @@ def test_case1_early_obesity_severe_hyperglycemia_walks_through() -> None:
         FullAssessmentInput(
             f014_hba1c=10.6,
             f018_weight=85.0,
-            f019_height=1.66,
+            f019_height=166.0,
             f026_start=enums.START,
             f027_stage=enums.STAGE_STABLE,
             f028_stage_goal="安全改善明显高血糖",

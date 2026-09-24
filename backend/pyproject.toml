@@ -12,6 +12,9 @@ dependencies = [
     "alembic>=1.13",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
+    # 患者批量导入：xlsx 解析与 FastAPI multipart 文件接收
+    "openpyxl>=3.1",
+    "python-multipart>=0.0.20",
     # 医学依据 PDF 文本抽取（依据检索库用；不使用 OCR）
     "pypdf>=5.0",
 ]

@@ -31,7 +31,12 @@ class PreAssessmentInput(BaseModel):
     f005_refused: str = Field(description="患者是否明确拒绝进一步了解或参与")
     # 机会信息：缺项不阻断（B-03 红线）
     f006_duration: str | None = None
+    f006_duration_years: int | None = Field(default=None, ge=0, le=60)
+    f006_duration_months: int = Field(default=0, ge=0, le=11)
     f007_bmi_hint: str | None = None
+    # 第二批把身高/体重前移到预评估；仍只作记录，不参与准入判断
+    f018_weight: float | None = Field(default=None, gt=0, le=500)
+    f019_height: float | None = Field(default=None, ge=50, le=250)
     f008_glucose_status: str | None = None
     f009_insulin: str | None = None
     f010_demands: list[str] = Field(default_factory=list)
@@ -70,11 +75,11 @@ class FullAssessmentInput(BaseModel):
 
     request_id: str | None = None
     f013_diagnosis_basis: str | None = None
-    f014_hba1c: float | None = None
+    f014_hba1c: float | None = Field(default=None, ge=0, le=30)
     f016_drugs: str | None = None
     f017_major_adjustment: str | None = None
-    f018_weight: float | None = None
-    f019_height: float | None = None
+    f018_weight: float | None = Field(default=None, gt=0, le=500)
+    f019_height: float | None = Field(default=None, ge=50, le=250)
     f020_waist: str | None = None
     f021_weight_change: str | None = None
     f022_cpeptide: str | None = None
@@ -193,9 +198,9 @@ class RemissionJudgeInput(BaseModel):
     f041_diagnosis_credible: str = Field(description="既往T2DM诊断是否可信（是/否/待复核）")
     f042_drug_free_3m: str = Field(description="已停用全部降糖作用药物至少3个月（是/否/待核对）")
     f043_hba1c_reliable: str = Field(description="HbA1c结果是否可可靠解释（是/否/待复核）")
-    f014_hba1c: float | None = None
-    f044_fpg: float | None = None
-    f045_ea1c: float | None = None
+    f014_hba1c: float | None = Field(default=None, ge=0, le=30)
+    f044_fpg: float | None = Field(default=None, ge=0, le=50)
+    f045_ea1c: float | None = Field(default=None, ge=0, le=30)
     f046_independent_review: str | None = None
     # 返回主动管理时由医生选择的阶段（仅 E4-B02 / E4-B06 需要；缺失时接口只返回提示、不落库）
     target_stage: str | None = None

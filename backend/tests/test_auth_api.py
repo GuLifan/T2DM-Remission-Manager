@@ -29,6 +29,52 @@ def test_status_reports_bootstrap_needed_then_done(client, doctor) -> None:
     assert response.json()["needs_bootstrap"] is False
 
 
+def test_open_registration_requires_matching_password_and_valid_department(client, doctor) -> None:
+    """开放注册成功后不自动登录；密码确认与科室字典均由后端再次校验。"""
+    registered = client.post(
+        "/api/auth/register",
+        json={
+            "username": "doctor_registered",
+            "display_name": "注册医生",
+            "department": "内分泌科",
+            "password": "Register-Passw0rd",
+            "password_confirm": "Register-Passw0rd",
+        },
+    )
+    assert registered.status_code == 201, registered.text
+    assert registered.json()["message"] == "注册成功，请使用新账号登录。"
+
+    login = client.post(
+        "/api/auth/login",
+        json={"username": "doctor_registered", "password": "Register-Passw0rd"},
+    )
+    assert login.status_code == 200
+    assert login.json()["user"]["department"] == "内分泌科"
+
+    mismatch = client.post(
+        "/api/auth/register",
+        json={
+            "username": "doctor_mismatch",
+            "display_name": "密码不一致",
+            "password": "Register-Passw0rd",
+            "password_confirm": "Different-Passw0rd",
+        },
+    )
+    assert mismatch.status_code == 422
+
+    invalid_department = client.post(
+        "/api/auth/register",
+        json={
+            "username": "doctor_bad_department",
+            "display_name": "错误科室",
+            "department": "不存在的科室",
+            "password": "Register-Passw0rd",
+            "password_confirm": "Register-Passw0rd",
+        },
+    )
+    assert invalid_department.status_code == 422
+
+
 def test_bootstrap_rejected_when_accounts_exist(client, doctor) -> None:
     """已存在账号时再次引导必须被拒绝（防止凭空建号）。"""
     response = client.post("/api/auth/bootstrap", json=TEST_DOCTOR)

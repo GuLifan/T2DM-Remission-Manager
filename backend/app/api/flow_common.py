@@ -50,6 +50,12 @@ def require_state(patient: Patient, allowed: tuple[str, ...], action_label: str)
         raise BusinessRuleError(f"当前患者不处于{action_label}环节，请按流程顺序操作。", code="WRONG_STATE")
 
 
+def require_profile_complete(patient: Patient) -> None:
+    """守卫：批量导入患者必须先由医生核对并完善基本资料。"""
+    if not patient.profile_complete:
+        raise BusinessRuleError("请先完善患者基本资料，再发起60秒缓解预评估。", code="PROFILE_INCOMPLETE")
+
+
 def record_outcome(
     db: Session,
     *,
