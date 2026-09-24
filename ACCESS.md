@@ -202,3 +202,4 @@
 | 100 | 2026-09-24 | 在隔离临时库执行真实材料导入、重复导入、迁移往返和检索验收，随后安全清理临时目录 | `data/runtime/m6-qa`、`data/runtime/m6-migration-qa`（均已删除） | require_escalated（uv + 临时数据库写入） | 首次导入四来源成功，重复导入全部跳过；迁移升级→降级→再升级通过；缓解/停药时间/HbA1c/remission/特殊字符查询通过。清理前解析并验证目标均位于项目 `data/runtime` 下。 |
 | 101 | 2026-09-24 | 备份并迁移开发库，导入四份已批准依据，执行只读完整性核验 | `data/runtime/backups/etmms-pre-m6a-20260924.db`、开发库 `6b7e2d4f9c10` → `a1c9e7f2d4b8` | workspace-write + require_escalated（uv + 开发库写入） | 备份与原库迁移前 SHA-256 一致；导入 684 分块（48+555+66+15），FTS 684 行；迁移前后 users 6、patients 4、events 29、audit_log 71 均不变，外键检查 0 异常。 |
 | 102 | 2026-09-24 | M6-A 最终全量 Gate | 后端 pytest/ruff、文档检查 | require_escalated（uv 缓存） | 后端 **168 passed**、ruff 全绿；文档 **3/3**。M6-A 完成，M6-B 接口与审计等待 Lifan 单独授权。 |
+| 103 | 2026-09-24 | 保存 M6 方案与 M6-A 本地提交 | `eb3ccd7`（M6 待审批方案）、`4a8fe7d`（M6-A 数据与导入） | require_escalated（Git 元数据写入） | 两笔提交均仅位于本地 `develop`，尚未推送；`main` 未合并、未修改。 |
