@@ -213,3 +213,4 @@
 | 111 | 2026-09-25 | 只读核对 M6-D 候选引用的三份 PDF 与锁定稿位置 | 本地依据索引；2021 共识第3页、2024 指南第5—6/15页、2026 共识第4/9页 | require_escalated（uv 只读数据库）+ PDF 页渲染 | 全文定位与物理页视觉核对一致；没有修改医学原件；临时 PNG 仅位于项目 `tmp/pdfs/m6d-review`，验收后已安全删除。 |
 | 112 | 2026-09-25 | 在开发库与密钥副本上执行 M6-D 最终真实浏览器验收并安全清理 | `data/runtime/m6d-browser-qa`（已删除）；本地 8088/5173 临时服务 | require_escalated（临时副本/服务）+ 本地浏览器控制 | 一次性普通医生在隔离副本中验证四来源页章出处、抽屉视觉、控制台与焦点恢复；临时服务已停止，副本/账号/审计随目录删除，正式开发库未写入本次验收数据。 |
 | 113 | 2026-09-25 | M6-D 与 M6 最终全量 Gate、正式库只读复核 | 后端 pytest/ruff；前端 Vitest/lint/build；文档检查；正式开发库 | require_escalated（uv/npm 缓存；数据库只读） | 后端 **176 passed**、ruff 全绿；前端 **30 passed / 9 files**、lint、build 全绿；文档 **4/4**。正式库 users 6、patients 4、events 29、audit 71、依据分块/FTS 684/684，外键检查 0、完整性 `ok`。 |
+| 114 | 2026-09-25 | 保存 M6-D 实现并准备按 Lifan 授权推送 `develop` | `e2a1146`（M6-D 规则依据候选与收口） | require_escalated（Git 元数据与远程推送） | 实现提交位于 `develop`；本审计提交完成后统一推送。`main` 与 `origin/main` 在推送前均保持 `1fc7286`，不执行合并。 |
