@@ -11,17 +11,21 @@
     3. 输出模板覆盖：以甲方原件《临床流程实现表_输出模板》为基准，
        其列出的每个模板 ID 都必须登记在 MAPPING.md 中（防止实现漏掉锁定文案）。
        同时核对 SYS 级兜底提示也已登记。
-    4. mapping 覆盖进度：统计 MAPPING.md 中仍为"待回填"的实现位置数量。
+    4. 依据索引候选：36/36 行必须具备候选映射和明确的待复核状态，
+       严禁自动产出的候选被误标为已确认依据。
+    5. mapping 覆盖进度：统计 MAPPING.md 中仍为"待回填"的实现位置数量。
 
 用法：
-    python scripts\\check_docs.py          # 执行检查，1/2/3 项失败时返回非零退出码
+    python scripts\\check_docs.py          # 执行检查，1/2/3/4 项失败时返回非零退出码
 
 修改历史：
     - 2026-09-20  v1.0  M1 初始实现
+    - 2026-09-25  v1.1  M6-D 增加 36 条依据候选与待复核状态门禁
 """
 
 from __future__ import annotations
 
+import csv
 import re
 import sys
 from pathlib import Path
@@ -35,6 +39,57 @@ SPEC_04 = ROOT / "_SPEC" / "04_字段与输出模板_v1.0.md"
 MAPPING = ROOT / "MAPPING.md"
 # 甲方输出模板原件（md 派生版）：模板清单的权威基准
 EVIDENCE_TEMPLATE_DOC = ROOT / "_DEV" / "甲方材料" / "md派生" / "临床流程实现表_输出模板.md"
+EVIDENCE_INDEX = ROOT / "_DEV" / "依据索引表_待填写_v1.0.csv"
+
+# 索引表保留 E3 双向阶段互转的合并行，因此共 36 行、覆盖 37 个程序规则/提示 ID。
+EXPECTED_EVIDENCE_RULE_IDS = {
+    "E1-B01",
+    "E1-B02",
+    "E1-B03",
+    "E1-B04",
+    "E1-B05",
+    "E2-B01",
+    "E2-B02",
+    "E2-B03",
+    "E2-B04",
+    "E3-B01",
+    "E3-B02",
+    "E3-B03/B04",
+    "E3-B05",
+    "E3-B06",
+    "E3-B07",
+    "E3-B08",
+    "A1-B01",
+    "A1-B02",
+    "A1-B03",
+    "A1-B04",
+    "A1-B05",
+    "E4-B01",
+    "E4-B02",
+    "E4-B03",
+    "E4-B04",
+    "E4-B05",
+    "E4-B06",
+    "E4-B07",
+    "E5-B01",
+    "E5-B02",
+    "E5-B03",
+    "E5-B04",
+    "E5-B05",
+    "SYS-E1-CLOSE",
+    "SYS-E5-REVIEW",
+    "SYS-ST00-REOPEN",
+}
+EVIDENCE_REQUIRED_COLUMNS = (
+    "规则ID",
+    "临床含义（已预填）",
+    "依据性质（填写）",
+    "材料简称（填写）",
+    "位置（填写）",
+    "关键结论（填写）",
+    "复核状态",
+)
+EVIDENCE_PENDING_STATUS = "待 Lifan/医学负责人复核"
 
 # Token 定义与引用的匹配模式
 TOKEN_DEFINE = re.compile(r"^\s*(--etmms-[a-z0-9-]+)\s*:", re.MULTILINE)
@@ -103,9 +158,43 @@ def check_template_count() -> tuple[bool, str]:
         return False, "_SPEC/04 的模板计数口径未更新（应为「30 条锁定 OUT-* + 3 条 SYS 级提示」）"
 
     return True, (
-        f"甲方原件 {len(canonical_ids)} 个锁定模板全部已登记；"
-        f"SYS 级提示 {len(sys_ids)} 个；_SPEC/04 计数口径一致"
+        f"甲方原件 {len(canonical_ids)} 个锁定模板全部已登记；SYS 级提示 {len(sys_ids)} 个；_SPEC/04 计数口径一致"
     )
+
+
+def check_evidence_index() -> tuple[bool, str]:
+    """检查 4：候选映射必须完整，同时维持统一的医学复核边界。"""
+    with EVIDENCE_INDEX.open(encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        fieldnames = set(reader.fieldnames or [])
+        missing_columns = [name for name in EVIDENCE_REQUIRED_COLUMNS if name not in fieldnames]
+        if missing_columns:
+            return False, f"依据索引表缺少列：{missing_columns}"
+        rows = list(reader)
+
+    if len(rows) != len(EXPECTED_EVIDENCE_RULE_IDS):
+        return False, f"依据索引表应为 36 行，实际 {len(rows)} 行"
+
+    rule_ids = [row["规则ID"].strip() for row in rows]
+    unique_ids = set(rule_ids)
+    if len(unique_ids) != len(rule_ids):
+        duplicates = sorted({rule_id for rule_id in rule_ids if rule_ids.count(rule_id) > 1})
+        return False, f"依据索引表存在重复规则ID：{duplicates}"
+
+    missing_ids = sorted(EXPECTED_EVIDENCE_RULE_IDS - unique_ids)
+    unexpected_ids = sorted(unique_ids - EXPECTED_EVIDENCE_RULE_IDS)
+    if missing_ids or unexpected_ids:
+        return False, f"规则ID不一致：缺少 {missing_ids}；多出 {unexpected_ids}"
+
+    incomplete = [row["规则ID"] for row in rows if any(not row[column].strip() for column in EVIDENCE_REQUIRED_COLUMNS)]
+    if incomplete:
+        return False, f"存在候选字段未填写的规则：{incomplete}"
+
+    wrong_status = [row["规则ID"] for row in rows if row["复核状态"].strip() != EVIDENCE_PENDING_STATUS]
+    if wrong_status:
+        return False, (f"候选行必须统一保持‘待 Lifan/医学负责人复核’，状态不合规：{wrong_status}")
+
+    return True, "36/36 条候选均已映射，并保持待 Lifan/医学负责人复核"
 
 
 def report_mapping_progress() -> str:
@@ -122,6 +211,7 @@ def main() -> int:
         ("Token 定义一致", check_token_definition),
         ("Token 使用率", check_token_usage),
         ("输出模板计数", check_template_count),
+        ("依据索引候选", check_evidence_index),
     ]
     failed = 0
     for name, func in checks:
