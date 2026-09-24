@@ -208,3 +208,4 @@
 | 106 | 2026-09-24 | 保存 M6-B 本地实现提交 | `82e5b15`（M6-B 依据检索接口与审计） | require_escalated（Git 元数据写入） | 提交仅位于本地 `develop`，尚未推送；`main` 未合并、未修改。 |
 | 107 | 2026-09-24 | 按 Lifan 批准实施 M6-C 前端依据抽屉 | `EvidenceDrawer.tsx`、`api/endpoints.ts`、`types/index.ts`、工作台接入、样式与前端测试 | workspace-write + require_escalated（npm 测试/构建） | 接入真实状态/检索；300 ms 延迟与旧请求取消；六类状态、页章出处、免责声明、焦点约束及医生可读网络故障。前端 **30 passed / 9 files**、lint、build 全绿。 |
 | 108 | 2026-09-24 | 在开发库与密钥副本上执行 M6-C 真实浏览器验收并安全清理 | `data/runtime/m6c-browser-qa`（已删除） | require_escalated（临时副本/服务）+ 本地浏览器控制 | 副本创建一次性普通医生；验证停药时间、缓解、HbA1c、不足 2 字、无结果、服务故障与恢复、PDF 页码/章节及 Tab/Esc 焦点。发现并修复同页多命中 React 重复键，修复后控制台无新增告警。正式开发库未新增账号或本次检索审计；清理前验证目标位于项目 `data/runtime`。 |
+| 109 | 2026-09-24 | 保存 M6-C 本地实现提交 | `a6c497d`（M6-C 医学依据检索抽屉） | require_escalated（Git 元数据写入） | 提交仅位于本地 `develop`，尚未推送；`main` 与 `origin/main` 均保持 `1fc7286`。 |
