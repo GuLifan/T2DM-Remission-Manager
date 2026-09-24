@@ -198,3 +198,7 @@
 | 序号 | 时间 | 行为 | 对象 | 权限模式 | 备注 |
 | --- | --- | --- | --- | --- | --- |
 | 98 | 2026-09-24 | 按 Lifan 授权只读核对 M6 材料、解析能力与中文检索兼容性，并形成待审批实施方案 | 三份本地医学 PDF、锁定稿 Markdown、SQLite 3.50.4/FTS5、`_SPEC/11_M6依据检索实施方案_v1.0.md` | workspace-read/write（未联网、未写运行数据库） | `pypdf` 实测三份 PDF 共 152 页且 152/152 页有文本；两份材料有非阻断结构警告。FTS5 `unicode61` 无法可靠命中连续中文，`trigram` 仅覆盖 3 字及以上，因此方案锁定为 trigram 主检索 + 2 字/不可用时参数化 LIKE 兜底。当前只写方案，未修改 M6 代码、数据库或有效 SPEC。 |
+| 99 | 2026-09-24 | 按 Lifan 批准实施 M6-A 数据与导入链路 | 迁移 `a1c9e7f2d4b8`、`models/evidence.py`、`repository/evidence.py`、`services/evidence_import.py`、`scripts/import_evidence.py`、新增测试与已批准 SPEC 回填 | workspace-write + require_escalated（uv 缓存/测试） | 固定三份 PDF + 锁定稿来源；哈希/页章门禁、页章内分块、单份原子替换、幂等导入、FTS5 trigram + LIKE 降级均已实现。 |
+| 100 | 2026-09-24 | 在隔离临时库执行真实材料导入、重复导入、迁移往返和检索验收，随后安全清理临时目录 | `data/runtime/m6-qa`、`data/runtime/m6-migration-qa`（均已删除） | require_escalated（uv + 临时数据库写入） | 首次导入四来源成功，重复导入全部跳过；迁移升级→降级→再升级通过；缓解/停药时间/HbA1c/remission/特殊字符查询通过。清理前解析并验证目标均位于项目 `data/runtime` 下。 |
+| 101 | 2026-09-24 | 备份并迁移开发库，导入四份已批准依据，执行只读完整性核验 | `data/runtime/backups/etmms-pre-m6a-20260924.db`、开发库 `6b7e2d4f9c10` → `a1c9e7f2d4b8` | workspace-write + require_escalated（uv + 开发库写入） | 备份与原库迁移前 SHA-256 一致；导入 684 分块（48+555+66+15），FTS 684 行；迁移前后 users 6、patients 4、events 29、audit_log 71 均不变，外键检查 0 异常。 |
+| 102 | 2026-09-24 | M6-A 最终全量 Gate | 后端 pytest/ruff、文档检查 | require_escalated（uv 缓存） | 后端 **168 passed**、ruff 全绿；文档 **3/3**。M6-A 完成，M6-B 接口与审计等待 Lifan 单独授权。 |

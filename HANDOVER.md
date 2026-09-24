@@ -23,7 +23,7 @@ cd backend && uv run uvicorn app.main:app --host 127.0.0.1 --port 8088   # 需�
 cd frontend && npm run dev                                              # 另一个终端
 
 # 4) 跑一遍质量基线，确认环境正常
-cd backend && uv run pytest -q -p no:warnings    # 期望 160 passed
+cd backend && uv run pytest -q -p no:warnings    # 期望 168 passed
 cd frontend && npm test                          # 期望 21 passed / 8 files
 python scripts\check_docs.py                     # 期望 3/3
 
@@ -31,9 +31,9 @@ python scripts\check_docs.py                     # 期望 3/3
 #    账号：admin（正式管理员兼测试账号，密码由 Lifan 保管）；doctor 已停用
 #    患者：3 位演示患者（MRN-DEMO-001 / 002、ZY010000001）
 
-# 6) 三批修订均已完成；进入 M6 前核对依据检索约束与素材登记
+# 6) M6-A 已完成；进入 M6-B 前核对已批准方案与当前索引状态
 git diff --stat
-#    重点读 _SPEC/08 的 M6 计划、_SPEC/07 的依据检索架构、_DEV/依据索引表_待填写_v1.0.csv
+#    重点读 _SPEC/11、_SPEC/07 第八节、scripts/import_evidence.py、_DEV/依据索引表_待填写_v1.0.csv
 ```
 
 ---
@@ -116,14 +116,14 @@ git diff --stat
 | 第二轮第一批 | ✅ | 安全测试模式、账号级模拟日期、测试患者全流程入口、TaskPanel、`MAPPING.md` 命名修正 |
 | 第二轮第二批 | ✅ | 开放注册、患者档案扩展、69 科室、xlsx/csv 导入与完善门禁、结构化录入、BMI、日期/布局/页脚 |
 | 第二轮第三批 | ✅ | 正式管理员、患者责任归属与转移、普通医生只读边界、阶段复评测量、患者搜索/到期排序；完整 Gate 与浏览器验收通过 |
-| M6 依据检索库 | ⬜ 未开始 | 三份 PDF 文本抽取 → FTS5 检索；素材清单在 `_DEV/依据索引表_待填写_v1.0.csv`（**当前 0/36 行已填**） |
+| M6 依据检索库 | 🟨 M6-A 完成 | 三份 PDF + 锁定稿已导入 684 个分块；迁移/FTS5/LIKE/导入器已完成；M6-B 接口、M6-C 抽屉、M6-D 规则索引待做 |
 | M7 打包与交付 | ⬜ 未开始 | 便携版 PyInstaller、交付物 xlsx、病例走查 |
 
 ### 4.2 质量基线（实测值，接手后请复跑确认）
 
 | 项 | 命令 | 期望 |
 | --- | --- | --- |
-| 后端测试 | `cd backend; uv run pytest -q -p no:warnings` | **160 passed** |
+| 后端测试 | `cd backend; uv run pytest -q -p no:warnings` | **168 passed** |
 | 后端静态检查 | `uv run ruff check .` | All checks passed |
 | 前端测试 | `cd frontend; npm test` | **21 passed / 8 files** |
 | 前端构建 | `npm run build` | tsc + vite 通过 |
@@ -133,7 +133,7 @@ git diff --stat
 ### 4.3 Git 状态（**重要**）
 
 ```
-develop  [origin/develop]           ← 第三批实现、走查修复与最终验收文档均已推送
+develop  （本地领先 origin/develop） ← M6 方案与 M6-A 尚未推送；第三批已在远程
 main     1fc7286  [origin/main]      ← 按 Lifan 指示保持不动
 ```
 
@@ -253,9 +253,9 @@ python scripts\build.py
 
 ## 7. 待办与优先级（接手后的工作清单）
 
-### 7.1 当前状态：三批修订全部完成，可以准备进入 M6
+### 7.1 当前状态：M6-A 已完成，M6-B 待 Lifan 授权
 
-Lifan 已于 2026-09-24 批准三批方案。第三批 UX-55/59/60 的角色、归属、测量与排序已完成实现、开发库迁移、160 项后端测试、21 项前端测试、文档 3/3 与真实浏览器验收；结果见 `_SPEC/08` 8.8。下一步是先按 SPEC-first 确认 M6 依据检索方案，再进入 M6 代码阶段。
+Lifan 已于 2026-09-24 批准 `_SPEC/11` 的五项 M6 决议并授权 M6-A。M6-A 已完成迁移 `a1c9e7f2d4b8`、依据模型、四来源导入器与 FTS5/LIKE 检索底座；开发库已导入三份 PDF 152 页与锁定稿 15 章节，共 684 个分块。后端 168 项测试、ruff、文档 3/3、迁移往返和真实材料检索均通过。下一步是 M6-B 状态/检索接口与不保存原始检索词的审计。
 
 ### 7.2 三批实施计划（`_SPEC/08` 第八节）
 
@@ -271,9 +271,11 @@ Lifan 已于 2026-09-24 批准三批方案。第三批 UX-55/59/60 的角色、�
 
 第三批 T3-01…T3-06 已由 Lifan 审定并实现：正式 `admin` 角色与测试标记分离；普通医生只写当前归属患者；只有管理员可转移归属；阶段复评更新身高/体重但不建趋势表；列表默认到期优先并支持五个字段双向排序。权威细节见 `_SPEC/06` 第八节、`_SPEC/07` 16.6 与 `_SPEC/08` 8.8。
 
-### 7.4 尚未开始的两个里程碑
+### 7.4 M6 剩余工作与 M7
 
-- **M6 依据检索库**：三份 PDF（`_DEV/医学依据/`）已确认是**文本型可抽取**；需要建 FTS5 索引 + 侧边栏检索抽屉 + **结果必须显示出处（材料名 + 页码）**。缺的素材索引表是 `_DEV/依据索引表_待填写_v1.0.csv`（36 行，当前 0 行已填）。
+- **M6-B**：状态接口、检索接口、鉴权、输入边界与 `evidence_search` 审计；审计不得保存原始检索词或正文。
+- **M6-C**：把现有 `EvidenceDrawer` 接到真实接口，显示材料名 + PDF 页码/章节并覆盖六类状态。
+- **M6-D**：`_DEV/依据索引表_待填写_v1.0.csv` 仍为 0/36；只能生成候选并等待医学复核，未经复核不得标记为确认依据。
 - **M7 打包与交付**：`scripts/build.py` 已写好但**未跑过完整流程**；PyInstaller 6.22.3 + Python 3.14.4 **已实测可用**；交付物（实现表 xlsx / 状态图 / 病例走查）尚未生成。
 
 ### 7.5 一个待补的质量项
@@ -375,7 +377,7 @@ V0.1 只在"有药"时写 `has_glucose_lowering_drug=True`，停药后旧值残�
 
 | 项 | 状态 |
 | --- | --- |
-| M6 依据检索库 | 未开始（素材索引表 0/36） |
+| M6 依据检索库 | M6-A 已完成；M6-B/C/D 待做，素材索引表 0/36 |
 | M7 便携版打包 | 脚本已写，未跑完整流程 |
 | 交付物 xlsx（实现表 / 病例走查） | 未生成 |
 | Playwright E2E | 未做（用人工走查 + Vitest 替代） |
