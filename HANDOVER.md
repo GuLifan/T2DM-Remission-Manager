@@ -133,7 +133,7 @@ git diff --stat
 ### 4.3 Git 状态（**重要**）
 
 ```
-develop  8ea608e  [origin/develop]   ← 第三批实现已推送；最终验收文档提交后再次推送
+develop  [origin/develop]           ← 第三批实现、走查修复与最终验收文档均已推送
 main     1fc7286  [origin/main]      ← 按 Lifan 指示保持不动
 ```
 
