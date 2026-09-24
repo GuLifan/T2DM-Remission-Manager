@@ -1,6 +1,6 @@
 # MAPPING.md — 临床规则 → 代码 → 测试 映射清单
 
-> **版本**：v1.2｜**日期**：2026-09-24｜**状态**：M5 完成；第二轮第一批已实施并通过验收
+> **版本**：v1.5｜**日期**：2026-09-24｜**状态**：M5 完成；第二轮三批改造均已实施并通过验收
 > **用途**：任一临床规则都能一路查到"锁定稿依据 → spec → 代码位置 → 输出模板 → 测试"。
 > **维护规则**：修改任何临床逻辑时必须同步本表；Token 变更登记在 `UI.md` 附录 B，此处只登记"本版本 Token 变更事件"。
 
@@ -142,7 +142,17 @@
 
 ---
 
-## 十、修订记录
+## 十、第二轮第三批需求映射（已实现）
+
+| 需求 | 约束来源 | 实际实现位置 | 验证 |
+| --- | --- | --- | --- |
+| FR-0-14 / UX-60 正式角色与患者责任归属 | `_SPEC/06` T3-01/02/05/06、`_SPEC/07` 16.6 | 迁移 `6b7e2d4f9c10`；`flow_common.py` 统一写守卫；`auth.py::assignable_doctors`；`patients.py::transfer_patient_owner`；`PermissionNotice` / `OwnershipTransferDialog` | `test_patient_permissions.py`、`test_auth_api.py`、`test_smoke.py`；管理员 + 两位医生浏览器走查 |
+| FR-0-10 / UX-55 阶段复评测量 | `_SPEC/06` T3-03、`_SPEC/07` 16.6.3 | `PhaseReviewInput`、`api/phase_review.py`、`PhaseReviewPage.tsx`；患者保存最新值，事件保存有效快照 | `test_api_flow.py::test_phase_review_updates_measurements_and_keeps_effective_snapshot`；`PhaseReviewPage.test.tsx`；浏览器 71kg/175cm/BMI23.2 |
+| FR-0-13 / UX-21/22/59 患者搜索排序 | `_SPEC/06` T3-04、`_SPEC/07` 16.6.4、`UI.md` 3.6 | `PatientListPage.tsx`：姓名/住院号搜索、有效今天、默认到期优先、五字段双向排序、到期色与只读/责任医生展示 | `PatientListPage.test.tsx`；浏览器验证搜索、默认顺序、手工排序与日期即时刷新 |
+
+---
+
+## 十一、修订记录
 
 | 版本 | 日期 | 修订内容 |
 | --- | --- | --- |
@@ -152,3 +162,4 @@
 | v1.2 | 2026-09-24 | 回填第二轮第一批实际代码与测试位置；确认迁移、三重守卫、模拟日期、测试跳转与任务面板均已通过 Gate |
 | v1.3 | 2026-09-24 | 登记第二轮第二批约束、计划代码位置与验收范围；待实现后回填实际位置 |
 | v1.4 | 2026-09-24 | 回填第二轮第二批实际实现、迁移、测试与浏览器验收位置 |
+| v1.5 | 2026-09-24 | 回填第三批正式角色、当前责任归属、阶段复评测量、患者搜索排序、权限翻转及浏览器验收位置 |
