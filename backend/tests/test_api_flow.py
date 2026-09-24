@@ -19,6 +19,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
 
 import pytest
@@ -411,6 +412,58 @@ def test_event_and_audit_are_written_together(client, doctor, db_session) -> Non
 
     audits = db_session.scalars(select(AuditLog).where(AuditLog.action == "event_write")).all()
     assert audits, "决策未写入审计日志"
+
+
+def test_phase_review_updates_measurements_and_keeps_effective_snapshot(
+    client, doctor, db_session
+) -> None:
+    """复评可局部更新测量值；留空沿用最新值，且每次事件保存实际生效快照。"""
+    patient_id = _create_patient(client, doctor, "MRN-M4-PHASE-MEASURE")
+    _reopen(client, doctor, patient_id)
+    _pre_enter(client, doctor, patient_id)
+    started = client.post(
+        f"/api/patients/{patient_id}/full-assessment",
+        json={
+            "f018_weight": 70,
+            "f019_height": 175,
+            "f026_start": enums.START,
+            "f027_stage": enums.STAGE_STABLE,
+            "f028_stage_goal": "验证测量快照",
+            "f029_interventions": ["结构化生活方式"],
+        },
+        headers=doctor["headers"],
+    )
+    assert started.status_code == 200, started.text
+
+    # 只更新体重，身高必须沿用最近快照，并重算 BMI。
+    first = client.post(
+        f"/api/patients/{patient_id}/phase-review",
+        json={"f018_weight": 72, "f034_action": enums.ACT_CONTINUE},
+        headers=doctor["headers"],
+    )
+    assert first.status_code == 200, first.text
+    detail = client.get(f"/api/patients/{patient_id}", headers=doctor["headers"]).json()
+    assert detail["height_cm"] == 175
+    assert detail["weight_kg"] == 72
+    assert detail["bmi"] == 23.5
+
+    # 下一次全部留空，患者最新快照不变；事件仍要保存本次实际采用的值。
+    second = client.post(
+        f"/api/patients/{patient_id}/phase-review",
+        json={"f034_action": enums.ACT_CONTINUE},
+        headers=doctor["headers"],
+    )
+    assert second.status_code == 200, second.text
+    db_session.expire_all()
+    event = (
+        db_session.query(Event)
+        .filter(Event.patient_id == patient_id, Event.rule_id == "E3-B01")
+        .order_by(Event.id.desc())
+        .first()
+    )
+    assert event is not None and event.payload is not None
+    effective = json.loads(event.payload)["effective_measurements"]
+    assert effective == {"height_cm": 175.0, "weight_kg": 72.0, "bmi": 23.5}
 
 
 @pytest.mark.parametrize(

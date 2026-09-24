@@ -46,6 +46,9 @@ def test_create_patient_starts_in_regular_care(client, doctor) -> None:
     assert body["birth_date"] == "1983-05-01"
     assert body["department"] == "内分泌科"
     assert body["created_by"] == doctor["user"]["id"]
+    assert body["owner_id"] == doctor["user"]["id"]
+    assert body["owner_display_name"] == doctor["user"]["display_name"]
+    assert body["can_edit"] is True
     assert body["profile_complete"] is True
 
 

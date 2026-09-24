@@ -17,7 +17,14 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.api.flow_common import record_outcome, require_profile_complete
+from app.api.flow_common import (
+    get_patient_or_404,
+    patient_out,
+    record_outcome,
+    require_admin,
+    require_patient_write_access,
+    require_profile_complete,
+)
 from app.core.exceptions import BusinessRuleError, ConflictError, NotFoundError
 from app.core.test_mode import test_capability_enabled
 from app.domain import templates
@@ -26,6 +33,7 @@ from app.models.schemas import (
     EventOut,
     EventPage,
     ImportRowResult,
+    OwnershipTransferIn,
     PatientCreateIn,
     PatientImportOut,
     PatientOut,
@@ -36,6 +44,7 @@ from app.repository import audit as audit_repo
 from app.repository import departments as departments_repo
 from app.repository import events as events_repo
 from app.repository import patients as patients_repo
+from app.repository import users as users_repo
 from app.repository.database import get_db
 from app.services.patient_import import parse_patient_import
 
@@ -85,6 +94,7 @@ def create_patient(
         department=payload.department,
         contact_phone=payload.contact_phone.strip() if payload.contact_phone else None,
         created_by=current_user.id,
+        owner_id=current_user.id,
         # 测试模式中的测试账号所建患者自动进入测试数据边界；普通入口不提供手工切换
         is_test_patient=test_capability_enabled(current_user),
     )
@@ -97,7 +107,7 @@ def create_patient(
         target_id=patient.id,
     )
     db.commit()
-    return PatientOut.model_validate(patient)
+    return patient_out(db, patient, current_user)
 
 
 @router.post("/import", response_model=PatientImportOut)
@@ -166,6 +176,7 @@ async def import_patients(
                 department=department,
                 contact_phone=contact_phone,
                 created_by=current_user.id,
+                owner_id=current_user.id,
                 profile_complete=False,
                 is_test_patient=test_capability_enabled(current_user),
             )
@@ -213,24 +224,24 @@ async def import_patients(
 
 @router.get("", response_model=list[PatientOut])
 def list_patients(
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[PatientOut]:
     """列出患者档案（按建档时间倒序）。"""
-    return [PatientOut.model_validate(item) for item in patients_repo.list_patients(db)]
+    return [patient_out(db, item, current_user) for item in patients_repo.list_patients(db)]
 
 
 @router.get("/{patient_id}", response_model=PatientOut)
 def get_patient(
     patient_id: int,
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> PatientOut:
     """查询单个患者档案。"""
     patient = patients_repo.get_patient(db, patient_id)
     if patient is None:
         raise NotFoundError("未找到该患者档案。")
-    return PatientOut.model_validate(patient)
+    return patient_out(db, patient, current_user)
 
 
 @router.put("/{patient_id}/profile", response_model=PatientOut)
@@ -241,9 +252,8 @@ def update_patient_profile(
     db: Session = Depends(get_db),
 ) -> PatientOut:
     """核对并完善患者基本资料；完成后解除预评估门禁。"""
-    patient = patients_repo.get_patient(db, patient_id)
-    if patient is None:
-        raise NotFoundError("未找到该患者档案。")
+    patient = get_patient_or_404(db, patient_id)
+    require_patient_write_access(current_user, patient)
     medical_record_no = payload.medical_record_no.strip()
     name = payload.name.strip()
     if not name or not medical_record_no:
@@ -271,7 +281,36 @@ def update_patient_profile(
         target_id=patient.id,
     )
     db.commit()
-    return PatientOut.model_validate(patient)
+    return patient_out(db, patient, current_user)
+
+
+@router.put("/{patient_id}/owner", response_model=PatientOut)
+def transfer_patient_owner(
+    patient_id: int,
+    payload: OwnershipTransferIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PatientOut:
+    """管理员转移患者当前责任归属；原始创建者保持不变。"""
+    require_admin(current_user)
+    patient = get_patient_or_404(db, patient_id)
+    new_owner = users_repo.get_by_id(db, payload.owner_id)
+    if new_owner is None or not new_owner.is_active or new_owner.role != "doctor":
+        raise BusinessRuleError(
+            "请选择仍在使用中的普通医生账号作为新的责任医生。", code="OWNER_INVALID"
+        )
+    old_owner_id = patient.owner_id
+    patients_repo.transfer_owner(db, patient, new_owner.id)
+    audit_repo.write_audit(
+        db,
+        action="patient_owner_transfer",
+        operator_id=current_user.id,
+        target_type="patient",
+        target_id=patient.id,
+        detail={"old_owner_id": old_owner_id, "new_owner_id": new_owner.id},
+    )
+    db.commit()
+    return patient_out(db, patient, current_user)
 
 
 @router.get("/{patient_id}/events", response_model=EventPage)
@@ -321,4 +360,4 @@ def reopen_pre_assessment(
         output_text=templates.render("SYS-ST00-REOPEN"),
         payload=None,
     )
-    return PatientOut.model_validate(patient)
+    return patient_out(db, patient, current_user)

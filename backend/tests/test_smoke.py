@@ -33,9 +33,14 @@ def test_health_ok(client) -> None:
 
 def test_schema_created_by_migration(client, db_session) -> None:
     """迁移已创建全部核心表。"""
-    table_names = set(inspect(db_session.get_bind()).get_table_names())
+    inspector = inspect(db_session.get_bind())
+    table_names = set(inspector.get_table_names())
     missing = EXPECTED_TABLES - table_names
     assert not missing, f"缺少表：{missing}"
+    patient_columns = {column["name"] for column in inspector.get_columns("patients")}
+    patient_indexes = {index["name"] for index in inspector.get_indexes("patients")}
+    assert "owner_id" in patient_columns
+    assert "ix_patients_owner_id" in patient_indexes
 
 
 def test_sqlite_foreign_keys_enabled(client, db_session) -> None:

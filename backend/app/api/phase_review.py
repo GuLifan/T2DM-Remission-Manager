@@ -28,6 +28,7 @@ from app.models.clinical import PhaseReviewInput, PhaseReviewResult
 from app.models.user import User
 from app.repository.database import get_db
 from app.services.phase_review import evaluate_phase_review
+from app.utils.measurements import calculate_bmi
 
 router = APIRouter(prefix="/patients", tags=["单元3：阶段复评"])
 
@@ -53,9 +54,21 @@ def submit_phase_review(
         surgery_date=patient.surgery_date,
     )
 
+    # 身高/体重均为可选更新；空值沿用旧快照，且任何分支都不得据此自动裁决。
+    effective_weight = payload.f018_weight if payload.f018_weight is not None else patient.weight_kg
+    effective_height = payload.f019_height if payload.f019_height is not None else patient.height_cm
+    measurement_updates: dict[str, object] = {}
+    if payload.f018_weight is not None or payload.f019_height is not None:
+        if payload.f018_weight is not None:
+            measurement_updates["weight_kg"] = payload.f018_weight
+        if payload.f019_height is not None:
+            measurement_updates["height_cm"] = payload.f019_height
+        measurement_updates["bmi"] = calculate_bmi(effective_height, effective_weight)
+
     if result.entered_observation and payload.f036_stop_date is not None:
         # 停用最后一种降糖药：进入观察期，记录锚点与最早可判定日期
         updates: dict[str, object] = {
+            **measurement_updates,
             "stage": None,
             "next_review_date": None,
             "last_med_stop_date": payload.f036_stop_date,
@@ -67,6 +80,7 @@ def submit_phase_review(
     else:
         # 非停药分支：按本次确认刷新用药状态（R1 修复点，禁止只在"有药"时更新）
         updates = {
+            **measurement_updates,
             "has_glucose_lowering_drug": payload.f053_has_drug,
             "drug_purpose": payload.f054_purpose if payload.f053_has_drug else None,
         }
@@ -89,6 +103,11 @@ def submit_phase_review(
         output_text=result.output_text,
         payload={
             **payload.model_dump(mode="json"),
+            "effective_measurements": {
+                "height_cm": effective_height,
+                "weight_kg": effective_weight,
+                "bmi": calculate_bmi(effective_height, effective_weight),
+            },
             # 被忽略的分支写入事件载荷，保证"当时还有哪些分支为真"可追溯
             "ignored_branches": result.ignored_branches,
         },

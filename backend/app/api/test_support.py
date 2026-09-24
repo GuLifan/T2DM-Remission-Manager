@@ -19,7 +19,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.api.flow_common import get_patient_or_404
+from app.api.flow_common import (
+    get_patient_or_404,
+    patient_out,
+    require_patient_write_access,
+)
 from app.config import get_settings
 from app.core.clock import system_clock
 from app.core.exceptions import BusinessRuleError, ConflictError
@@ -91,8 +95,9 @@ def debug_jump_state(
     db: Session = Depends(get_db),
 ) -> PatientOut:
     """把测试患者直接切换到指定状态，并以 debug 事件留痕。"""
-    require_test_account(current_user)
     patient = get_patient_or_404(db, patient_id)
+    require_patient_write_access(current_user, patient)
+    require_test_account(current_user)
     require_test_patient(patient)
 
     if payload.target_state not in ALL_STATES:
@@ -156,4 +161,4 @@ def debug_jump_state(
         },
     )
     db.commit()
-    return PatientOut.model_validate(patient)
+    return patient_out(db, patient, current_user)

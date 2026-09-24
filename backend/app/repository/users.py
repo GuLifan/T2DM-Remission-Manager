@@ -42,6 +42,16 @@ def get_by_id(db: Session, user_id: int) -> User | None:
     return db.get(User, user_id)
 
 
+def list_assignable_doctors(db: Session) -> list[User]:
+    """列出可接管患者的启用普通医生；管理员与系统账号不作为转移目标。"""
+    statement = (
+        select(User)
+        .where(User.role == "doctor", User.is_active.is_(True), User.username != SYSTEM_USERNAME)
+        .order_by(User.display_name, User.id)
+    )
+    return list(db.scalars(statement).all())
+
+
 def create_user(
     db: Session,
     *,
@@ -60,7 +70,7 @@ def create_user(
         display_name (str): 界面显示姓名（会记入事件流水的操作者）。
         password (str): 明文密码，仅在此处使用，不落盘。
         department (str | None): 所属科室，注册时可不填。
-        role (str): 角色，本版本为 doctor。
+        role (str): 正式角色：admin / doctor；系统保留账号使用 system。
         is_active (bool): 是否可登录。
     """
     user = User(

@@ -31,6 +31,7 @@ def create_patient(
     department: str = "内分泌科",
     contact_phone: str | None = None,
     created_by: int | None = None,
+    owner_id: int | None = None,
     profile_complete: bool = True,
     is_test_patient: bool = False,
 ) -> Patient:
@@ -43,6 +44,7 @@ def create_patient(
         department=department,
         contact_phone=contact_phone,
         created_by=created_by,
+        owner_id=owner_id if owner_id is not None else created_by,
         profile_complete=profile_complete,
         is_test_patient=is_test_patient,
         current_state=INITIAL_STATE,
@@ -84,9 +86,15 @@ def find_by_medical_record_no(db: Session, medical_record_no: str) -> Patient | 
     return db.scalar(select(Patient).where(Patient.medical_record_no == medical_record_no))
 
 
-def list_patients(db: Session, limit: int = 200) -> list[Patient]:
-    """按建档时间倒序列出患者（数量上限防止意外全表返回）。"""
-    return list(db.scalars(select(Patient).order_by(Patient.created_at.desc()).limit(limit)).all())
+def list_patients(db: Session) -> list[Patient]:
+    """列出全部患者；第三批明确采用前端即时搜索与排序，不做分页或静默截断。"""
+    return list(db.scalars(select(Patient).order_by(Patient.created_at.desc())).all())
+
+
+def transfer_owner(db: Session, patient: Patient, owner_id: int) -> None:
+    """只修改当前责任医生，原始创建者保持不变。"""
+    patient.owner_id = owner_id
+    db.flush()
 
 
 def apply_outcome(

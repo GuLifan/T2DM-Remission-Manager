@@ -116,6 +116,9 @@ class PhaseReviewInput(BaseModel):
     """阶段复评输入：复评最少输入（F030–F033）+ 动作（F034–F036）+ 分支事实。"""
 
     request_id: str | None = None
+    # 第三批允许在正式复评时更新最新身高/体重；空值表示沿用患者现有快照
+    f018_weight: float | None = Field(default=None, gt=0, le=500)
+    f019_height: float | None = Field(default=None, ge=50, le=250)
     f030_safety_issues: list[str] = Field(default_factory=list)
     f031_stage_indicator: str | None = None
     f032_treatment_changes: list[str] = Field(default_factory=list)

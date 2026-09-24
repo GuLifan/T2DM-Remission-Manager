@@ -17,9 +17,19 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
+from app.api.flow_common import require_admin
 from app.core.exceptions import BusinessRuleError, ConflictError
 from app.core.security import create_session_token, verify_password
-from app.models.schemas import AuthStatusOut, BootstrapIn, LoginIn, LoginOut, RegisterIn, RegisterOut, UserOut
+from app.models.schemas import (
+    AssignableDoctorOut,
+    AuthStatusOut,
+    BootstrapIn,
+    LoginIn,
+    LoginOut,
+    RegisterIn,
+    RegisterOut,
+    UserOut,
+)
 from app.models.user import User
 from app.repository import audit as audit_repo
 from app.repository import departments as departments_repo
@@ -37,7 +47,7 @@ def auth_status(db: Session = Depends(get_db)) -> AuthStatusOut:
 
 @router.post("/bootstrap", response_model=LoginOut)
 def bootstrap(payload: BootstrapIn, db: Session = Depends(get_db)) -> LoginOut:
-    """创建首个医生账号并直接登录。
+    """创建首个正式管理员账号并直接登录。
 
     仅在系统内还没有任何账号时可用（防止后续被用来凭空创建账号）；不预置任何默认密码。
     """
@@ -48,6 +58,7 @@ def bootstrap(payload: BootstrapIn, db: Session = Depends(get_db)) -> LoginOut:
         username=payload.username,
         display_name=payload.display_name,
         password=payload.password,
+        role="admin",
     )
     # 同时建立系统保留账号，供后续系统自动事件记录操作者
     users_repo.system_user(db)
@@ -84,6 +95,7 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)) -> RegisterOut:
         display_name=display_name,
         password=payload.password,
         department=department,
+        role="doctor",
     )
     audit_repo.write_audit(
         db,
@@ -161,3 +173,13 @@ def logout(current_user: User = Depends(get_current_user), db: Session = Depends
 def me(current_user: User = Depends(get_current_user)) -> UserOut:
     """查询当前登录账号（前端用于显示当前医生姓名）。"""
     return UserOut.model_validate(current_user)
+
+
+@router.get("/assignable-doctors", response_model=list[AssignableDoctorOut])
+def assignable_doctors(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[AssignableDoctorOut]:
+    """列出可接管患者的启用医生；只向正式管理员开放。"""
+    require_admin(current_user)
+    return [AssignableDoctorOut.model_validate(user) for user in users_repo.list_assignable_doctors(db)]

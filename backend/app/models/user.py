@@ -33,7 +33,8 @@ class User(Base):
     department: Mapped[str | None] = mapped_column(String(128), nullable=True)
     # 密码哈希（scrypt 加盐；禁止明文，禁止可逆加密）
     password_hash: Mapped[str] = mapped_column(String(255))
-    # 角色：本版本仅 doctor，预留 admin
+    # 正式业务角色：admin 可管理全部患者并转移归属；doctor 仅可写自己负责的患者
+    # 注意：角色权限与 is_test_account 测试能力完全独立，禁止相互推导
     role: Mapped[str] = mapped_column(String(16), default="doctor")
     # 测试账号标记：还必须同时开启 ETMMS_TEST_MODE 才能使用测试能力
     is_test_account: Mapped[bool] = mapped_column(Boolean, default=False)

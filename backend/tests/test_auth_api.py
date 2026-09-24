@@ -27,6 +27,7 @@ def test_status_reports_bootstrap_needed_then_done(client, doctor) -> None:
     response = client.get("/api/auth/status")
     assert response.status_code == 200
     assert response.json()["needs_bootstrap"] is False
+    assert doctor["user"]["role"] == "admin"
 
 
 def test_open_registration_requires_matching_password_and_valid_department(client, doctor) -> None:
@@ -50,6 +51,7 @@ def test_open_registration_requires_matching_password_and_valid_department(clien
     )
     assert login.status_code == 200
     assert login.json()["user"]["department"] == "内分泌科"
+    assert login.json()["user"]["role"] == "doctor"
 
     mismatch = client.post(
         "/api/auth/register",

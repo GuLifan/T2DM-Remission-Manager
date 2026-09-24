@@ -33,8 +33,10 @@ class Patient(Base):
     # 当前科室必填；联系方式选填，不强制医生编造缺失信息
     department: Mapped[str] = mapped_column(String(128), default="内分泌科")
     contact_phone: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # 创建者本批只记录不执行业务权限；第三批再启用账号隔离守卫
+    # 原始创建者永久保留，不因后续接管而改写；用于追溯档案来源
     created_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    # 当前责任医生：第三批权限守卫以本字段为准；管理员转移归属时只更新本字段
+    owner_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     # 批量导入患者必须先完善资料；手工建档默认已完善
     profile_complete: Mapped[bool] = mapped_column(Boolean, default=True)
     # 测试患者标记：测试跳转与模拟日期只能作用于此类患者

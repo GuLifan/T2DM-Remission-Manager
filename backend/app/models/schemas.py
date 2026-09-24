@@ -28,7 +28,7 @@ class AuthStatusOut(BaseModel):
 
 
 class BootstrapIn(BaseModel):
-    """创建首个医生账号的请求。"""
+    """创建首个正式管理员账号的请求。"""
 
     username: str = Field(min_length=3, max_length=64, description="登录名")
     display_name: str = Field(min_length=1, max_length=64, description="界面显示姓名")
@@ -79,6 +79,16 @@ class UserOut(BaseModel):
     simulated_date: date | None = None
 
 
+class AssignableDoctorOut(BaseModel):
+    """管理员转移患者归属时可选择的启用医生。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    display_name: str
+    department: str | None = None
+
+
 class LoginOut(BaseModel):
     """登录成功响应。"""
 
@@ -111,6 +121,12 @@ class PatientProfileUpdateIn(PatientCreateIn):
     """完善患者资料；住院号仍需保持全局唯一。"""
 
 
+class OwnershipTransferIn(BaseModel):
+    """管理员转移患者当前责任归属的请求。"""
+
+    owner_id: int = Field(gt=0, description="新的责任医生账号 ID")
+
+
 class PatientOut(BaseModel):
     """患者档案响应。current_state 为内部状态代码，仅供前端路由使用，**不得直接展示给医生**。"""
 
@@ -124,6 +140,9 @@ class PatientOut(BaseModel):
     department: str
     contact_phone: str | None = None
     created_by: int | None = None
+    owner_id: int | None = None
+    owner_display_name: str | None = None
+    can_edit: bool = False
     profile_complete: bool = True
     is_test_patient: bool = False
     height_cm: float | None = None
@@ -142,6 +161,7 @@ class PatientOut(BaseModel):
     has_glucose_lowering_drug: bool | None = None
     drug_purpose: str | None = None
     created_at: datetime
+    updated_at: datetime
 
 
 class ImportRowResult(BaseModel):

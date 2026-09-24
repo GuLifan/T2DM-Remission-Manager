@@ -18,13 +18,15 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import BusinessRuleError, ConflictError, NotFoundError
+from app.core.exceptions import BusinessRuleError, ConflictError, ForbiddenError, NotFoundError
 from app.core.test_mode import simulated_date_for_event
 from app.models.patient import Patient
+from app.models.schemas import PatientOut
 from app.models.user import User
 from app.repository import audit as audit_repo
 from app.repository import events as events_repo
 from app.repository import patients as patients_repo
+from app.repository import users as users_repo
 
 
 def get_patient_or_404(db: Session, patient_id: int) -> Patient:
@@ -33,6 +35,36 @@ def get_patient_or_404(db: Session, patient_id: int) -> Patient:
     if patient is None:
         raise NotFoundError("未找到该患者档案。")
     return patient
+
+
+def require_admin(user: User) -> None:
+    """守卫：只有正式管理员角色可执行账号或归属管理操作。"""
+    if user.role != "admin":
+        raise ForbiddenError("只有管理员可以执行此操作。", code="ADMIN_REQUIRED")
+
+
+def can_edit_patient(user: User, patient: Patient) -> bool:
+    """判断账号是否可以改变患者档案或流程状态。"""
+    return user.role == "admin" or patient.owner_id == user.id
+
+
+def require_patient_write_access(user: User, patient: Patient) -> None:
+    """患者写权限的唯一守卫；测试账号不得绕过责任归属。"""
+    if not can_edit_patient(user, patient):
+        raise ForbiddenError(
+            "您的账户暂无权限编辑此条记录", code="PATIENT_WRITE_FORBIDDEN"
+        )
+
+
+def patient_out(db: Session, patient: Patient, current_user: User) -> PatientOut:
+    """构造含责任医生与当前账号权限的患者响应。"""
+    owner = users_repo.get_by_id(db, patient.owner_id) if patient.owner_id is not None else None
+    return PatientOut.model_validate(patient).model_copy(
+        update={
+            "owner_display_name": owner.display_name if owner is not None else None,
+            "can_edit": can_edit_patient(current_user, patient),
+        }
+    )
 
 
 def require_state(patient: Patient, allowed: tuple[str, ...], action_label: str) -> None:
@@ -84,6 +116,8 @@ def record_outcome(
     异常:
         ConflictError: request_id 已存在（重复提交）。
     """
+    # 所有临床落库统一从这里经过，避免新增接口时遗漏横向越权守卫
+    require_patient_write_access(operator, patient)
     # 幂等：同一个 request_id 只允许成功一次
     if request_id and events_repo.find_by_request_id(db, patient.id, request_id) is not None:
         raise ConflictError("该操作已经提交过，本次未重复记录。", code="DUPLICATE_REQUEST")
