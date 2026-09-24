@@ -233,3 +233,52 @@ class DebugJumpIn(BaseModel):
 
     target_state: str = Field(min_length=4, max_length=4)
     request_id: str | None = Field(default=None, max_length=64)
+
+
+# ===================== 医学依据检索 =====================
+
+
+class EvidenceMaterialStatusOut(BaseModel):
+    """一份预期材料的本地索引状态。"""
+
+    source_key: str
+    title: str
+    source_type: str
+    ready: bool
+    page_count: int | None = None
+    text_page_count: int | None = None
+    chunk_count: int = 0
+    imported_at: datetime | None = None
+
+
+class EvidenceStatusOut(BaseModel):
+    """依据库总体状态，用于区分未导入和查询无命中。"""
+
+    expected_count: int
+    indexed_count: int
+    searchable: bool
+    last_imported_at: datetime | None = None
+    materials: list[EvidenceMaterialStatusOut]
+
+
+class EvidenceSearchItemOut(BaseModel):
+    """一条纯文本依据命中；不得包含 HTML 或本机绝对路径。"""
+
+    evidence_id: int
+    source_key: str
+    title: str
+    source_type: str
+    page_no: int | None = None
+    section: str | None = None
+    snippet: str
+
+
+class EvidenceSearchOut(BaseModel):
+    """医学依据检索响应。"""
+
+    query: str
+    search_mode: str
+    materials_indexed: int
+    total: int
+    returned: int
+    items: list[EvidenceSearchItemOut]

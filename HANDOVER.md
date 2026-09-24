@@ -23,7 +23,7 @@ cd backend && uv run uvicorn app.main:app --host 127.0.0.1 --port 8088   # 需�
 cd frontend && npm run dev                                              # 另一个终端
 
 # 4) 跑一遍质量基线，确认环境正常
-cd backend && uv run pytest -q -p no:warnings    # 期望 168 passed
+cd backend && uv run pytest -q -p no:warnings    # 期望 176 passed
 cd frontend && npm test                          # 期望 21 passed / 8 files
 python scripts\check_docs.py                     # 期望 3/3
 
@@ -31,7 +31,7 @@ python scripts\check_docs.py                     # 期望 3/3
 #    账号：admin（正式管理员兼测试账号，密码由 Lifan 保管）；doctor 已停用
 #    患者：3 位演示患者（MRN-DEMO-001 / 002、ZY010000001）
 
-# 6) M6-A 已完成；进入 M6-B 前核对已批准方案与当前索引状态
+# 6) M6-A/B 已完成；进入 M6-C 前核对已批准方案与现有 EvidenceDrawer
 git diff --stat
 #    重点读 _SPEC/11、_SPEC/07 第八节、scripts/import_evidence.py、_DEV/依据索引表_待填写_v1.0.csv
 ```
@@ -116,14 +116,14 @@ git diff --stat
 | 第二轮第一批 | ✅ | 安全测试模式、账号级模拟日期、测试患者全流程入口、TaskPanel、`MAPPING.md` 命名修正 |
 | 第二轮第二批 | ✅ | 开放注册、患者档案扩展、69 科室、xlsx/csv 导入与完善门禁、结构化录入、BMI、日期/布局/页脚 |
 | 第二轮第三批 | ✅ | 正式管理员、患者责任归属与转移、普通医生只读边界、阶段复评测量、患者搜索/到期排序；完整 Gate 与浏览器验收通过 |
-| M6 依据检索库 | 🟨 M6-A 完成 | 三份 PDF + 锁定稿已导入 684 个分块；迁移/FTS5/LIKE/导入器已完成；M6-B 接口、M6-C 抽屉、M6-D 规则索引待做 |
+| M6 依据检索库 | 🟨 M6-A/B 完成 | 四来源 684 分块及状态/检索/审计接口已完成；M6-C 抽屉、M6-D 规则索引待做 |
 | M7 打包与交付 | ⬜ 未开始 | 便携版 PyInstaller、交付物 xlsx、病例走查 |
 
 ### 4.2 质量基线（实测值，接手后请复跑确认）
 
 | 项 | 命令 | 期望 |
 | --- | --- | --- |
-| 后端测试 | `cd backend; uv run pytest -q -p no:warnings` | **168 passed** |
+| 后端测试 | `cd backend; uv run pytest -q -p no:warnings` | **176 passed** |
 | 后端静态检查 | `uv run ruff check .` | All checks passed |
 | 前端测试 | `cd frontend; npm test` | **21 passed / 8 files** |
 | 前端构建 | `npm run build` | tsc + vite 通过 |
@@ -253,9 +253,9 @@ python scripts\build.py
 
 ## 7. 待办与优先级（接手后的工作清单）
 
-### 7.1 当前状态：M6-A 已完成，M6-B 待 Lifan 授权
+### 7.1 当前状态：M6-A/B 已完成，M6-C 待 Lifan 授权
 
-Lifan 已于 2026-09-24 批准 `_SPEC/11` 的五项 M6 决议并授权 M6-A。M6-A 已完成迁移 `a1c9e7f2d4b8`、依据模型、四来源导入器与 FTS5/LIKE 检索底座；开发库已导入三份 PDF 152 页与锁定稿 15 章节，共 684 个分块。后端 168 项测试、ruff、文档 3/3、迁移往返和真实材料检索均通过。下一步是 M6-B 状态/检索接口与不保存原始检索词的审计。
+Lifan 已于 2026-09-24 批准 `_SPEC/11` 的五项 M6 决议，并先后授权 M6-A、M6-B。M6-A 已完成迁移 `a1c9e7f2d4b8`、四来源导入与 684 个分块；M6-B 已完成 `GET /api/evidence/status`、`GET /api/evidence/search`、登录鉴权、完整性门禁和不保存原始检索词的审计。后端 176 项测试与真实 HTTP 副本验收通过。下一步是 M6-C 前端依据抽屉。
 
 ### 7.2 三批实施计划（`_SPEC/08` 第八节）
 
@@ -273,7 +273,6 @@ Lifan 已于 2026-09-24 批准 `_SPEC/11` 的五项 M6 决议并授权 M6-A。M6
 
 ### 7.4 M6 剩余工作与 M7
 
-- **M6-B**：状态接口、检索接口、鉴权、输入边界与 `evidence_search` 审计；审计不得保存原始检索词或正文。
 - **M6-C**：把现有 `EvidenceDrawer` 接到真实接口，显示材料名 + PDF 页码/章节并覆盖六类状态。
 - **M6-D**：`_DEV/依据索引表_待填写_v1.0.csv` 仍为 0/36；只能生成候选并等待医学复核，未经复核不得标记为确认依据。
 - **M7 打包与交付**：`scripts/build.py` 已写好但**未跑过完整流程**；PyInstaller 6.22.3 + Python 3.14.4 **已实测可用**；交付物（实现表 xlsx / 状态图 / 病例走查）尚未生成。
@@ -377,7 +376,7 @@ V0.1 只在"有药"时写 `has_glucose_lowering_drug=True`，停药后旧值残�
 
 | 项 | 状态 |
 | --- | --- |
-| M6 依据检索库 | M6-A 已完成；M6-B/C/D 待做，素材索引表 0/36 |
+| M6 依据检索库 | M6-A/B 已完成；M6-C/D 待做，素材索引表 0/36 |
 | M7 便携版打包 | 脚本已写，未跑完整流程 |
 | 交付物 xlsx（实现表 / 病例走查） | 未生成 |
 | Playwright E2E | 未做（用人工走查 + Vitest 替代） |

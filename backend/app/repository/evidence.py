@@ -45,11 +45,17 @@ class EvidenceSearchRow:
     page_no: int | None
     section: str | None
     content: str
+    search_text: str
 
 
 def get_by_source_key(db: Session, source_key: str) -> Evidence | None:
     """按稳定材料键查询。"""
     return db.scalar(select(Evidence).where(Evidence.source_key == source_key))
+
+
+def list_evidences(db: Session) -> list[Evidence]:
+    """按稳定材料键列出全部已导入材料。"""
+    return list(db.scalars(select(Evidence).order_by(Evidence.source_key)).all())
 
 
 def count_chunks(db: Session, evidence_id: int) -> int:
@@ -143,17 +149,27 @@ def _escape_like(query: str) -> str:
     return query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def search_chunks(db: Session, query: str, *, limit: int = 20) -> tuple[str, list[EvidenceSearchRow]]:
-    """检索原文分块；返回实际模式和稳定排序的结果。"""
+def search_chunks(db: Session, query: str, *, limit: int = 20) -> tuple[str, int, list[EvidenceSearchRow]]:
+    """检索原文分块；返回实际模式、总命中数和当前页结果。"""
     normalized = " ".join(query.strip().split())
     if not normalized:
-        return "like", []
+        return "like", 0, []
     safe_limit = max(1, min(limit, 50))
     if len(normalized) >= 3 and fts5_index_available(db):
+        parameters = {"query": _fts_phrase(normalized), "limit": safe_limit}
+        total = int(
+            db.execute(
+                text(
+                    "SELECT COUNT(*) FROM evidence_chunks_fts "
+                    "WHERE evidence_chunks_fts MATCH :query"
+                ),
+                parameters,
+            ).scalar_one()
+        )
         rows = db.execute(
             text(
                 "SELECT ec.id AS chunk_id, e.id AS evidence_id, e.source_key, e.title, "
-                "e.source_type, ec.page_no, ec.section, ec.content "
+                "e.source_type, ec.page_no, ec.section, ec.content, ec.search_text "
                 "FROM evidence_chunks_fts "
                 "JOIN evidence_chunks ec ON ec.id = evidence_chunks_fts.rowid "
                 "JOIN evidences e ON e.id = ec.evidence_id "
@@ -161,19 +177,29 @@ def search_chunks(db: Session, query: str, *, limit: int = 20) -> tuple[str, lis
                 "ORDER BY bm25(evidence_chunks_fts), e.source_key, "
                 "COALESCE(ec.page_no, 0), ec.ordinal LIMIT :limit"
             ),
-            {"query": _fts_phrase(normalized), "limit": safe_limit},
+            parameters,
         ).mappings()
-        return "fts5_trigram", [EvidenceSearchRow(**row) for row in rows]
+        return "fts5_trigram", total, [EvidenceSearchRow(**row) for row in rows]
 
     pattern = f"%{_escape_like(normalized)}%"
+    parameters = {"pattern": pattern, "limit": safe_limit}
+    total = int(
+        db.execute(
+            text(
+                "SELECT COUNT(*) FROM evidence_chunks ec "
+                "WHERE ec.search_text LIKE :pattern ESCAPE '\\'"
+            ),
+            parameters,
+        ).scalar_one()
+    )
     rows = db.execute(
         text(
             "SELECT ec.id AS chunk_id, e.id AS evidence_id, e.source_key, e.title, "
-            "e.source_type, ec.page_no, ec.section, ec.content "
+            "e.source_type, ec.page_no, ec.section, ec.content, ec.search_text "
             "FROM evidence_chunks ec JOIN evidences e ON e.id = ec.evidence_id "
             "WHERE ec.search_text LIKE :pattern ESCAPE '\\' "
             "ORDER BY e.source_key, COALESCE(ec.page_no, 0), ec.ordinal LIMIT :limit"
         ),
-        {"pattern": pattern, "limit": safe_limit},
+        parameters,
     ).mappings()
-    return "like", [EvidenceSearchRow(**row) for row in rows]
+    return "like", total, [EvidenceSearchRow(**row) for row in rows]

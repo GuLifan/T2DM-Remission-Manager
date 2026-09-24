@@ -86,27 +86,32 @@ def test_markdown_import_is_idempotent_and_searches_chinese(db_session, tmp_path
     assert db_session.scalar(select(func.count(Evidence.id))) == 1
     assert db_session.scalar(select(func.count(EvidenceChunk.id))) == 2
 
-    mode, hits = evidence_repo.search_chunks(db_session, "停药时间")
+    mode, total, hits = evidence_repo.search_chunks(db_session, "停药时间")
     assert mode == "fts5_trigram"
+    assert total == 1
     assert len(hits) == 1
     assert hits[0].section == "第一章"
 
-    mode, hits = evidence_repo.search_chunks(db_session, "缓解")
+    mode, total, hits = evidence_repo.search_chunks(db_session, "缓解")
     assert mode == "like"
+    assert total == 1
     assert len(hits) == 1
 
-    mode, hits = evidence_repo.search_chunks(db_session, "HbA1c")
+    mode, total, hits = evidence_repo.search_chunks(db_session, "HbA1c")
     assert mode == "fts5_trigram"
+    assert total == 1
     assert len(hits) == 1
 
     # LIKE 通配符必须按普通字符处理，不能扩大成“匹配全部”。
-    mode, hits = evidence_repo.search_chunks(db_session, "%_")
+    mode, total, hits = evidence_repo.search_chunks(db_session, "%_")
     assert mode == "like"
+    assert total == 0
     assert hits == []
 
     # FTS 操作符和引号必须作为普通文本短语处理，不能引发语法错误或扩大结果。
-    mode, hits = evidence_repo.search_chunks(db_session, '缓解" OR *')
+    mode, total, hits = evidence_repo.search_chunks(db_session, '缓解" OR *')
     assert mode == "fts5_trigram"
+    assert total == 0
     assert hits == []
 
     # 文件内容发生变化时替换同一材料，不新增第二份材料。
@@ -115,8 +120,8 @@ def test_markdown_import_is_idempotent_and_searches_chinese(db_session, tmp_path
     updated = import_evidence_source(db_session, source_root=tmp_path, source=source)
     assert updated.status == "imported"
     assert db_session.scalar(select(Evidence.id)) == old_id
-    assert evidence_repo.search_chunks(db_session, "停药时间")[1] == []
-    assert len(evidence_repo.search_chunks(db_session, "更新后的")[1]) == 1
+    assert evidence_repo.search_chunks(db_session, "停药时间")[2] == []
+    assert len(evidence_repo.search_chunks(db_session, "更新后的")[2]) == 1
 
 
 def test_import_rejects_hash_change(db_session, tmp_path: Path) -> None:
@@ -177,7 +182,7 @@ def test_failed_reimport_preserves_previous_index(db_session, tmp_path: Path) ->
     assert after is not None
     assert after.sha256 == before_hash
     assert evidence_repo.count_chunks(db_session, after.id) == before_chunks
-    assert len(evidence_repo.search_chunks(db_session, "原有内容")[1]) == 1
+    assert len(evidence_repo.search_chunks(db_session, "原有内容")[2]) == 1
 
 
 def test_chunking_never_crosses_page_or_section() -> None:
@@ -240,6 +245,7 @@ def test_search_falls_back_when_fts_table_is_unavailable() -> None:
         )
         db.commit()
         assert evidence_repo.fts5_index_available(db) is False
-        mode, hits = evidence_repo.search_chunks(db, "停药时间")
+        mode, total, hits = evidence_repo.search_chunks(db, "停药时间")
         assert mode == "like"
+        assert total == 1
         assert len(hits) == 1

@@ -14,6 +14,7 @@ from fastapi import APIRouter
 from app.api import (
     auth,
     domain_data,
+    evidence,
     full_assessment,
     observation,
     patients,
@@ -32,6 +33,8 @@ api_router.include_router(reference_data.router)
 api_router.include_router(patients.router)
 # 领域数据：状态、流程单元、分支优先级（供前端渲染，避免前后端各写一套）
 api_router.include_router(domain_data.router)
+# 医学依据：全局只读资料，要求登录但不受患者责任归属限制
+api_router.include_router(evidence.router)
 # 测试支持：默认关闭，后端内部执行测试模式/账号/患者三重守卫
 api_router.include_router(test_support.router)
 # 临床流程单元 1–6
