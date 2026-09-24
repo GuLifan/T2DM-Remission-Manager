@@ -24,14 +24,14 @@ cd frontend && npm run dev                                              # 另一
 
 # 4) 跑一遍质量基线，确认环境正常
 cd backend && uv run pytest -q -p no:warnings    # 期望 176 passed
-cd frontend && npm test                          # 期望 21 passed / 8 files
+cd frontend && npm test                          # 期望 30 passed / 9 files
 python scripts\check_docs.py                     # 期望 3/3
 
 # 5) 看数据里有什么
 #    账号：admin（正式管理员兼测试账号，密码由 Lifan 保管）；doctor 已停用
 #    患者：3 位演示患者（MRN-DEMO-001 / 002、ZY010000001）
 
-# 6) M6-A/B 已完成；进入 M6-C 前核对已批准方案与现有 EvidenceDrawer
+# 6) M6-A/B/C 已完成；进入 M6-D 前核对已批准方案与 0/36 规则索引表
 git diff --stat
 #    重点读 _SPEC/11、_SPEC/07 第八节、scripts/import_evidence.py、_DEV/依据索引表_待填写_v1.0.csv
 ```
@@ -116,7 +116,7 @@ git diff --stat
 | 第二轮第一批 | ✅ | 安全测试模式、账号级模拟日期、测试患者全流程入口、TaskPanel、`MAPPING.md` 命名修正 |
 | 第二轮第二批 | ✅ | 开放注册、患者档案扩展、69 科室、xlsx/csv 导入与完善门禁、结构化录入、BMI、日期/布局/页脚 |
 | 第二轮第三批 | ✅ | 正式管理员、患者责任归属与转移、普通医生只读边界、阶段复评测量、患者搜索/到期排序；完整 Gate 与浏览器验收通过 |
-| M6 依据检索库 | 🟨 M6-A/B 完成 | 四来源 684 分块及状态/检索/审计接口已完成；M6-C 抽屉、M6-D 规则索引待做 |
+| M6 依据检索库 | 🟨 M6-A/B/C 完成 | 四来源 684 分块、接口/审计及真实前端抽屉已完成；M6-D 规则索引待做 |
 | M7 打包与交付 | ⬜ 未开始 | 便携版 PyInstaller、交付物 xlsx、病例走查 |
 
 ### 4.2 质量基线（实测值，接手后请复跑确认）
@@ -125,7 +125,7 @@ git diff --stat
 | --- | --- | --- |
 | 后端测试 | `cd backend; uv run pytest -q -p no:warnings` | **176 passed** |
 | 后端静态检查 | `uv run ruff check .` | All checks passed |
-| 前端测试 | `cd frontend; npm test` | **21 passed / 8 files** |
+| 前端测试 | `cd frontend; npm test` | **30 passed / 9 files** |
 | 前端构建 | `npm run build` | tsc + vite 通过 |
 | 前端 lint | `npm run lint` | 无告警 |
 | 文档一致性 | `python scripts\check_docs.py` | **3/3**（61 个 Token 全部有使用点） |
@@ -133,7 +133,7 @@ git diff --stat
 ### 4.3 Git 状态（**重要**）
 
 ```
-develop  （本地领先 origin/develop） ← M6 方案与 M6-A 尚未推送；第三批已在远程
+develop  （本地领先 origin/develop） ← M6 方案与 M6-A/B/C 尚未推送；第三批已在远程
 main     1fc7286  [origin/main]      ← 按 Lifan 指示保持不动
 ```
 
@@ -253,9 +253,9 @@ python scripts\build.py
 
 ## 7. 待办与优先级（接手后的工作清单）
 
-### 7.1 当前状态：M6-A/B 已完成，M6-C 待 Lifan 授权
+### 7.1 当前状态：M6-A/B/C 已完成，M6-D 待 Lifan 授权
 
-Lifan 已于 2026-09-24 批准 `_SPEC/11` 的五项 M6 决议，并先后授权 M6-A、M6-B。M6-A 已完成迁移 `a1c9e7f2d4b8`、四来源导入与 684 个分块；M6-B 已完成 `GET /api/evidence/status`、`GET /api/evidence/search`、登录鉴权、完整性门禁和不保存原始检索词的审计。后端 176 项测试与真实 HTTP 副本验收通过。下一步是 M6-C 前端依据抽屉。
+Lifan 已于 2026-09-24 批准 `_SPEC/11` 的五项 M6 决议，并先后授权 M6-A、M6-B、M6-C。M6-A 已完成迁移 `a1c9e7f2d4b8`、四来源导入与 684 个分块；M6-B 已完成状态/检索接口、登录鉴权、完整性门禁和隐私审计；M6-C 已把现有 `EvidenceDrawer` 接到真实接口，落实六类状态、延迟/取消、页章出处、免责声明与焦点管理。后端 176 项、前端 30 项测试及隔离副本真实浏览器验收通过。下一步是 M6-D 36 条规则索引候选与 M6 收口。
 
 ### 7.2 三批实施计划（`_SPEC/08` 第八节）
 
@@ -273,7 +273,6 @@ Lifan 已于 2026-09-24 批准 `_SPEC/11` 的五项 M6 决议，并先后授权 
 
 ### 7.4 M6 剩余工作与 M7
 
-- **M6-C**：把现有 `EvidenceDrawer` 接到真实接口，显示材料名 + PDF 页码/章节并覆盖六类状态。
 - **M6-D**：`_DEV/依据索引表_待填写_v1.0.csv` 仍为 0/36；只能生成候选并等待医学复核，未经复核不得标记为确认依据。
 - **M7 打包与交付**：`scripts/build.py` 已写好但**未跑过完整流程**；PyInstaller 6.22.3 + Python 3.14.4 **已实测可用**；交付物（实现表 xlsx / 状态图 / 病例走查）尚未生成。
 
@@ -376,7 +375,7 @@ V0.1 只在"有药"时写 `has_glucose_lowering_drug=True`，停药后旧值残�
 
 | 项 | 状态 |
 | --- | --- |
-| M6 依据检索库 | M6-A/B 已完成；M6-C/D 待做，素材索引表 0/36 |
+| M6 依据检索库 | M6-A/B/C 已完成；M6-D 待做，素材索引表 0/36 |
 | M7 便携版打包 | 脚本已写，未跑完整流程 |
 | 交付物 xlsx（实现表 / 病例走查） | 未生成 |
 | Playwright E2E | 未做（用人工走查 + Vitest 替代） |

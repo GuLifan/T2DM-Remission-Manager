@@ -108,6 +108,17 @@ function stubFetch(
       return Promise.resolve(jsonOk([{ id: 2, display_name: '李医生', department: '内分泌科' }]))
     }
     if (url.includes('/api/domain/flow-units')) return Promise.resolve(jsonOk(FLOW_UNITS))
+    if (url.includes('/api/evidence/status')) {
+      return Promise.resolve(
+        jsonOk({
+          expected_count: 4,
+          indexed_count: 4,
+          searchable: true,
+          last_imported_at: '2026-09-24T10:00:00',
+          materials: [],
+        }),
+      )
+    }
     if (url.includes('/api/domain/branches')) return Promise.resolve(jsonOk(branches))
     if (url.includes('/api/domain/states')) {
       return Promise.resolve(
@@ -317,5 +328,26 @@ describe('PatientWorkspacePage 导航规则', () => {
         expect.objectContaining({ method: 'PUT' }),
       )
     })
+  })
+
+  it('从工作台唯一入口打开真实医学依据抽屉', async () => {
+    const fetchMock = stubFetch()
+    const user = userEvent.setup()
+    render(
+      <PatientWorkspacePage
+        patientId={7}
+        currentUser={{ id: 1, username: 'doctor', display_name: '张医生', role: 'doctor', is_test_account: false, simulated_date: null }}
+        onBack={() => undefined}
+      />,
+    )
+
+    const trigger = await screen.findByRole('button', { name: '查阅医学依据' })
+    await user.click(trigger)
+    expect(await screen.findByRole('dialog', { name: '医学依据' })).toBeInTheDocument()
+    expect(await screen.findByText('已载入 4 份医学依据。')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/evidence/status',
+      expect.objectContaining({ method: 'GET' }),
+    )
   })
 })

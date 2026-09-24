@@ -368,13 +368,10 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
         </div>
       </div>
 
-      {/* 医学依据：M6 建立检索库后接入；当前显示未录入占位 */}
+      {/* 医学依据是全局只读资料，不依赖当前患者归属。 */}
       <EvidenceDrawer
         open={evidenceOpen}
         onClose={() => setEvidenceOpen(false)}
-        query=""
-        onQueryChange={() => undefined}
-        hits={[]}
       />
     </div>
   )

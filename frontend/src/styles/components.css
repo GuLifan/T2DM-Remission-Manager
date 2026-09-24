@@ -757,6 +757,52 @@
   gap: var(--etmms-space-4);
 }
 
+.drawer__search-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--etmms-space-2);
+  color: var(--etmms-on-surface);
+  font-size: var(--etmms-text-label);
+  font-weight: var(--etmms-weight-medium);
+}
+
+.drawer__disclaimer {
+  margin: 0;
+  padding: var(--etmms-space-3);
+  background: var(--etmms-surface-container);
+  border-radius: var(--etmms-radius-sm);
+  color: var(--etmms-on-surface-variant);
+  font-size: var(--etmms-text-caption);
+}
+
+.drawer__state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--etmms-space-2);
+  padding: var(--etmms-space-4);
+  background: var(--etmms-surface);
+  border: var(--etmms-border-width) solid var(--etmms-outline-variant);
+  border-radius: var(--etmms-radius-sm);
+  color: var(--etmms-on-surface-variant);
+}
+
+.drawer__state strong {
+  color: var(--etmms-on-surface);
+  font-weight: var(--etmms-weight-medium);
+}
+
+.drawer__results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--etmms-space-3);
+}
+
+.drawer__summary {
+  margin: 0;
+  color: var(--etmms-on-surface-variant);
+  font-size: var(--etmms-text-caption);
+}
+
 .drawer__result {
   background: var(--etmms-surface);
   border: var(--etmms-border-width) solid var(--etmms-outline-variant);
@@ -765,6 +811,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--etmms-space-2);
+}
+
+.drawer__result p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .drawer__source {

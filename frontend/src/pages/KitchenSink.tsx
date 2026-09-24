@@ -54,7 +54,6 @@ export default function KitchenSink() {
   const [note, setNote] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [evidenceQuery, setEvidenceQuery] = useState('')
   const [showError, setShowError] = useState(true)
 
   return (
@@ -286,18 +285,6 @@ export default function KitchenSink() {
       <EvidenceDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        query={evidenceQuery}
-        onQueryChange={setEvidenceQuery}
-        hits={
-          evidenceQuery
-            ? [
-                {
-                  text: '完全停用降糖药物至少 3 个月后，HbA1c＜6.5% 可判定为 2 型糖尿病缓解。',
-                  source: '中国 2 型糖尿病缓解专家共识 · 第 4 页',
-                },
-              ]
-            : []
-        }
       />
     </div>
   )

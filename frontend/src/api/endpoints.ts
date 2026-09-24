@@ -13,6 +13,8 @@ import type {
   AuthStatusOut,
   BranchOut,
   EventPage,
+  EvidenceSearchResult,
+  EvidenceStatus,
   FlowUnitOut,
   FullAssessmentResult,
   LoginOut,
@@ -85,6 +87,15 @@ export const domainApi = {
   states: (signal?: AbortSignal) => api.get<StateOut[]>('/api/domain/states', signal),
   flowUnits: (signal?: AbortSignal) => api.get<FlowUnitOut[]>('/api/domain/flow-units', signal),
   branches: (signal?: AbortSignal) => api.get<BranchOut[]>('/api/domain/branches', signal),
+}
+
+/** 全局只读医学依据；不依赖患者归属，但后端仍要求有效登录。 */
+export const evidenceApi = {
+  status: (signal?: AbortSignal) => api.get<EvidenceStatus>('/api/evidence/status', signal),
+  search: (query: string, limit = 20, signal?: AbortSignal) => {
+    const params = new URLSearchParams({ q: query, limit: String(limit) })
+    return api.get<EvidenceSearchResult>(`/api/evidence/search?${params.toString()}`, signal)
+  },
 }
 
 /** 测试支持接口。后端仍会执行测试模式、账号、患者三重守卫。 */

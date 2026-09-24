@@ -151,6 +151,50 @@ export interface BranchOut {
   target: string
 }
 
+// ===== 医学依据 =====
+
+/** 一份批准材料的本地索引状态。 */
+export interface EvidenceMaterialStatus {
+  source_key: string
+  title: string
+  source_type: string
+  ready: boolean
+  page_count: number | null
+  text_page_count: number | null
+  chunk_count: number
+  imported_at: string | null
+}
+
+/** 依据库总体状态；用于区分材料未导入与查询无命中。 */
+export interface EvidenceStatus {
+  expected_count: number
+  indexed_count: number
+  searchable: boolean
+  last_imported_at: string | null
+  materials: EvidenceMaterialStatus[]
+}
+
+/** 一条只读原文命中及其可复核出处。 */
+export interface EvidenceSearchItem {
+  evidence_id: number
+  source_key: string
+  title: string
+  source_type: string
+  page_no: number | null
+  section: string | null
+  snippet: string
+}
+
+/** 医学依据检索响应。 */
+export interface EvidenceSearchResult {
+  query: string
+  search_mode: string
+  materials_indexed: number
+  total: number
+  returned: number
+  items: EvidenceSearchItem[]
+}
+
 // ===== 临床流程结果 =====
 
 export interface PreAssessmentResult {
