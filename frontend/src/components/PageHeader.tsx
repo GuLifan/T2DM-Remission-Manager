@@ -12,7 +12,7 @@
 interface PageHeaderProps {
   /** 页面标题 */
   title: string
-  /** 患者上下文（姓名 · 病历号等），可选 */
+  /** 患者上下文（姓名 · 住院号等），可选 */
   context?: string
   /** 右侧全局入口 */
   actions?: React.ReactNode

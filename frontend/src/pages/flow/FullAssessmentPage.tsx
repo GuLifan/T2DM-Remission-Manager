@@ -13,8 +13,9 @@
 import { useState } from 'react'
 
 import { ApiError } from '../../api/client'
-import { flowApi } from '../../api/endpoints'
-import { CheckboxGroup, ErrorBanner, FieldRow, ResultBanner, SettingsRow } from '../../components'
+import { flowApi, referenceApi } from '../../api/endpoints'
+import { CheckboxGroup, DateInput, ErrorBanner, FieldRow, MultiSelectWithOther, NumericInput, ResultBanner, SelectWithOther, SettingsRow } from '../../components'
+import { useAsync } from '../../hooks/useAsync'
 import {
   HOLD_SUPPLEMENT,
   NOT_START,
@@ -34,12 +35,13 @@ interface FlowPageProps {
 
 /** 单元2：完整评估与计划。 */
 export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps) {
+  const references = useAsync((signal) => referenceApi.get(signal), [])
   const [diagnosisBasis, setDiagnosisBasis] = useState('')
   const [hba1c, setHba1c] = useState('')
-  const [drugs, setDrugs] = useState('')
+  const [drugs, setDrugs] = useState<string[]>([])
   const [majorAdjustment, setMajorAdjustment] = useState('')
-  const [weight, setWeight] = useState('')
-  const [height, setHeight] = useState('')
+  const [weight, setWeight] = useState(patient.weight_kg?.toString() ?? '')
+  const [height, setHeight] = useState(patient.height_cm?.toString() ?? '')
   const [cpeptide, setCpeptide] = useState('')
   const [constraints, setConstraints] = useState<string[]>([])
   const [willing, setWilling] = useState('')
@@ -56,6 +58,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
   const [result, setResult] = useState<FullAssessmentResult | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const bmi = weight && height ? Number(weight) / ((Number(height) / 100) ** 2) : null
 
   /** 把可空输入转成数字或 null（注意 0 是合法值，不能被吞掉）。 */
   function toNumberOrNull(value: string): number | null {
@@ -70,7 +73,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
       const response = await flowApi.fullAssessment(patient.id, {
         f013_diagnosis_basis: diagnosisBasis || null,
         f014_hba1c: toNumberOrNull(hba1c),
-        f016_drugs: drugs || null,
+        f016_drugs: drugs.length ? drugs.join('、') : null,
         f017_major_adjustment: majorAdjustment || null,
         f018_weight: toNumberOrNull(weight),
         f019_height: toNumberOrNull(height),
@@ -110,36 +113,35 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
           <div className="form-grid">
             <FieldRow label="既往 T2DM 诊断基础">
               {(fieldProps) => (
-                <input
+                <SelectWithOther
                   {...fieldProps}
-                  className="input"
+                  options={references.data?.diagnosis_bases ?? []}
                   value={diagnosisBasis}
-                  onChange={(event) => setDiagnosisBasis(event.target.value)}
+                  onChange={setDiagnosisBasis}
                 />
               )}
             </FieldRow>
             <FieldRow label="最近 HbA1c（%）">
               {(fieldProps) => (
-                <input
+                <NumericInput
                   {...fieldProps}
-                  className="input num"
-                  type="number"
-                  step="0.1"
+                  unit="%"
+                  min={0}
+                  max={30}
+                  step={0.1}
                   value={hba1c}
-                  onChange={(event) => setHba1c(event.target.value)}
+                  onChange={setHba1c}
                 />
               )}
             </FieldRow>
-            <FieldRow label="当前具有降糖作用的药物">
-              {(fieldProps) => (
-                <input
-                  {...fieldProps}
-                  className="input"
-                  value={drugs}
-                  onChange={(event) => setDrugs(event.target.value)}
-                />
-              )}
-            </FieldRow>
+            <div className="field-row">
+              <MultiSelectWithOther
+                legend="当前具有降糖作用的药物（可多选）"
+                options={references.data?.drug_classes ?? []}
+                values={drugs}
+                onChange={setDrugs}
+              />
+            </div>
             <FieldRow label="是否处于重大治疗调整期">
               {(fieldProps) => (
                 <select
@@ -156,27 +158,32 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
             </FieldRow>
             <FieldRow label="体重（kg）">
               {(fieldProps) => (
-                <input
+                <NumericInput
                   {...fieldProps}
-                  className="input num"
-                  type="number"
-                  step="0.1"
+                  unit="kg"
+                  min={0.1}
+                  max={500}
+                  step={0.1}
                   value={weight}
-                  onChange={(event) => setWeight(event.target.value)}
+                  onChange={setWeight}
                 />
               )}
             </FieldRow>
             <FieldRow label="身高（cm）">
               {(fieldProps) => (
-                <input
+                <NumericInput
                   {...fieldProps}
-                  className="input num"
-                  type="number"
-                  step="0.1"
+                  unit="cm"
+                  min={50}
+                  max={250}
+                  step={0.1}
                   value={height}
-                  onChange={(event) => setHeight(event.target.value)}
+                  onChange={setHeight}
                 />
               )}
+            </FieldRow>
+            <FieldRow label="BMI" hint="沿用预评估值，可随本次身高体重更新。">
+              {(fieldProps) => <input {...fieldProps} className="input num" readOnly value={bmi && Number.isFinite(bmi) ? bmi.toFixed(1) : ''} />}
             </FieldRow>
             <FieldRow label="C 肽 / 胰岛功能（条件性）">
               {(fieldProps) => (
@@ -279,12 +286,10 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
               </FieldRow>
               <FieldRow label="首次正式复评日期" hint="留空按默认 12 周计算，可自行指定。">
                 {(fieldProps) => (
-                  <input
+                  <DateInput
                     {...fieldProps}
-                    className="input num"
-                    type="date"
                     value={nextReviewDate}
-                    onChange={(event) => setNextReviewDate(event.target.value)}
+                    onChange={setNextReviewDate}
                   />
                 )}
               </FieldRow>

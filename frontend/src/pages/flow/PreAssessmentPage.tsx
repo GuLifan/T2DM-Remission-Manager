@@ -21,6 +21,7 @@ import {
   CheckboxGroup,
   ErrorBanner,
   FieldRow,
+  NumericInput,
   ResultBanner,
   SettingsRow,
 } from '../../components'
@@ -59,8 +60,10 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
   const [contextEnough, setContextEnough] = useState<string>(YES)
   const [refused, setRefused] = useState<string>(NO)
   // 机会信息（不阻断）
-  const [duration, setDuration] = useState('')
-  const [bmiHint, setBmiHint] = useState('')
+  const [durationYears, setDurationYears] = useState('')
+  const [durationMonths, setDurationMonths] = useState('0')
+  const [weight, setWeight] = useState(patient.weight_kg?.toString() ?? '')
+  const [height, setHeight] = useState(patient.height_cm?.toString() ?? '')
   const [glucoseHint, setGlucoseHint] = useState('')
   const [insulin, setInsulin] = useState('')
   const [demands, setDemands] = useState<string[]>([])
@@ -73,6 +76,7 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
   const [result, setResult] = useState<PreAssessmentResult | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const bmi = weight && height ? Number(weight) / ((Number(height) / 100) ** 2) : null
 
   /** 提交预评估。 */
   async function handleSubmit() {
@@ -85,8 +89,15 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
         f003_type_doubt: typeDoubt,
         f004_treatment_context_sufficient: contextEnough,
         f005_refused: refused,
-        f006_duration: duration || null,
-        f007_bmi_hint: bmiHint || null,
+        f006_duration:
+          durationYears || durationMonths !== '0'
+            ? `${durationYears || '0'} 年 ${durationMonths || '0'} 个月`
+            : null,
+        f006_duration_years: durationYears === '' ? null : Number(durationYears),
+        f006_duration_months: Number(durationMonths || 0),
+        f007_bmi_hint: bmi && Number.isFinite(bmi) ? `BMI ${bmi.toFixed(1)}` : null,
+        f018_weight: weight === '' ? null : Number(weight),
+        f019_height: height === '' ? null : Number(height),
         f008_glucose_status: glucoseHint || null,
         f009_insulin: insulin || null,
         f010_demands: demands,
@@ -222,25 +233,24 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
           <div className="form-grid">
             <FieldRow label="大致病程">
               {(fieldProps) => (
-                <input
-                  {...fieldProps}
-                  className="input"
-                  value={duration}
-                  placeholder="如：4个月、2年"
-                  onChange={(event) => setDuration(event.target.value)}
-                />
+                <div className="duration-input" {...fieldProps}>
+                  <NumericInput value={durationYears} onChange={setDurationYears} unit="年" min={0} max={60} step={1} />
+                  <NumericInput value={durationMonths} onChange={setDurationMonths} unit="月" min={0} max={11} step={1} />
+                </div>
               )}
             </FieldRow>
-            <FieldRow label="BMI 或中心性肥胖线索">
+            <FieldRow label="体重">
               {(fieldProps) => (
-                <input
-                  {...fieldProps}
-                  className="input"
-                  value={bmiHint}
-                  placeholder="如：BMI 31"
-                  onChange={(event) => setBmiHint(event.target.value)}
-                />
+                <NumericInput {...fieldProps} value={weight} onChange={setWeight} unit="kg" min={0.1} max={500} step={0.1} />
               )}
+            </FieldRow>
+            <FieldRow label="身高">
+              {(fieldProps) => (
+                <NumericInput {...fieldProps} value={height} onChange={setHeight} unit="cm" min={50} max={250} step={0.1} />
+              )}
+            </FieldRow>
+            <FieldRow label="BMI" hint="系统按本次身高与体重计算，仅作记录，不参与准入判断。">
+              {(fieldProps) => <input {...fieldProps} className="input num" readOnly value={bmi && Number.isFinite(bmi) ? bmi.toFixed(1) : ''} />}
             </FieldRow>
             <FieldRow label="近期血糖状态">
               {(fieldProps) => (

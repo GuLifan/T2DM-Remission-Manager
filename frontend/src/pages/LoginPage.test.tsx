@@ -87,4 +87,34 @@ describe('LoginPage', () => {
     // 只调用了 /auth/status，没有调用 bootstrap
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
+
+  it('已有账号时可开放注册，注册成功后返回登录且不自动登录', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/api/auth/status')) return Promise.resolve(jsonResponse({ needs_bootstrap: false }))
+      if (url.endsWith('/api/reference')) {
+        return Promise.resolve(jsonResponse({ departments: ['内分泌科'], diagnosis_bases: [], drug_classes: [] }))
+      }
+      if (url.endsWith('/api/auth/register')) {
+        return Promise.resolve(jsonResponse({ message: '注册成功，请使用新账号登录。' }, 201))
+      }
+      return Promise.resolve(jsonResponse({ detail: '未预期的请求' }, 500))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const onLoggedIn = vi.fn()
+    const user = userEvent.setup()
+    render(<LoginPage onLoggedIn={onLoggedIn} />)
+    await screen.findByText('请使用医生账号登录。')
+    await user.click(screen.getByRole('button', { name: '注册医生账号' }))
+    await user.type(screen.getByLabelText('登录名'), 'new_doctor')
+    await user.type(screen.getByLabelText('界面显示姓名'), '李医生')
+    await user.selectOptions(await screen.findByLabelText('所属科室'), '内分泌科')
+    await user.type(screen.getByLabelText('密码'), 'Register-Passw0rd')
+    await user.type(screen.getByLabelText('再次输入密码'), 'Register-Passw0rd')
+    await user.click(screen.getByRole('button', { name: '注册' }))
+
+    expect(await screen.findByText('注册成功，请使用新账号登录。')).toBeInTheDocument()
+    expect(onLoggedIn).not.toHaveBeenCalled()
+  })
 })

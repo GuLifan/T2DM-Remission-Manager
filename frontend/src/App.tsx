@@ -15,7 +15,7 @@ import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-do
 
 import { session } from './api/client'
 import { authApi } from './api/endpoints'
-import { LoadingBlock } from './components'
+import { FooterBar, LoadingBlock } from './components'
 import KitchenSink from './pages/KitchenSink'
 import LoginPage from './pages/LoginPage'
 import PatientListPage from './pages/PatientListPage'
@@ -56,35 +56,41 @@ export default function App() {
 
   if (!currentUser) {
     return (
-      <Routes>
-        <Route path="/dev/kitchen-sink" element={<KitchenSink />} />
-        <Route path="*" element={<LoginPage onLoggedIn={setCurrentUser} />} />
-      </Routes>
+      <div className="app-root">
+        <Routes>
+          <Route path="/dev/kitchen-sink" element={<KitchenSink />} />
+          <Route path="*" element={<LoginPage onLoggedIn={setCurrentUser} />} />
+        </Routes>
+        <FooterBar />
+      </div>
     )
   }
 
   return (
-    <Routes>
-      <Route path="/dev/kitchen-sink" element={<KitchenSink />} />
-      <Route
-        path="/"
-        element={
-          <PatientListPage
-            currentUser={currentUser}
-            onOpenPatient={(patientId) => navigate(`/patients/${patientId}`)}
-            onLogout={() => {
-              void authApi.logout().catch(() => undefined)
-              session.clear()
-              setCurrentUser(null)
-            }}
-          />
-        }
-      />
-      <Route
-        path="/patients/:id"
-        element={<WorkspaceRoute currentUser={currentUser} onBack={() => navigate('/')} />}
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <div className="app-root">
+      <Routes>
+        <Route path="/dev/kitchen-sink" element={<KitchenSink />} />
+        <Route
+          path="/"
+          element={
+            <PatientListPage
+              currentUser={currentUser}
+              onOpenPatient={(patientId) => navigate(`/patients/${patientId}`)}
+              onLogout={() => {
+                void authApi.logout().catch(() => undefined)
+                session.clear()
+                setCurrentUser(null)
+              }}
+            />
+          }
+        />
+        <Route
+          path="/patients/:id"
+          element={<WorkspaceRoute currentUser={currentUser} onBack={() => navigate('/')} />}
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <FooterBar />
+    </div>
   )
 }

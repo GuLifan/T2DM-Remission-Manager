@@ -18,10 +18,11 @@ interface FlowPageProps {
   patient: Patient
   /** 决策完成后刷新患者（壳层据此切换页面） */
   onUpdated: () => void
+  eventCount?: number
 }
 
 /** 常规糖尿病综合管理（ST00）：可重新发起预评估。 */
-export function RegularCarePage({ patient, onUpdated }: FlowPageProps) {
+export function RegularCarePage({ patient, onUpdated, eventCount = 0 }: FlowPageProps) {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -47,9 +48,10 @@ export function RegularCarePage({ patient, onUpdated }: FlowPageProps) {
       </p>
       <div className="card">
         {error ? <ErrorBanner message={error} /> : null}
+        <p className="page__subtitle">既往评估记录：{eventCount} 条，可在本页下方管理记录中回看。</p>
         <div className="page__actions">
           <button type="button" className="btn btn--primary" disabled={submitting} onClick={handleReopen}>
-            {submitting ? '正在发起…' : '重新发起60秒缓解预评估'}
+            {submitting ? '正在发起…' : '发起60秒缓解预评估'}
           </button>
         </div>
       </div>

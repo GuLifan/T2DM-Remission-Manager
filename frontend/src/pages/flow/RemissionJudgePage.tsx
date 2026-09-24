@@ -16,7 +16,7 @@ import { useState } from 'react'
 
 import { ApiError } from '../../api/client'
 import { flowApi } from '../../api/endpoints'
-import { ErrorBanner, FieldRow, ResultBanner, SettingsRow } from '../../components'
+import { ErrorBanner, FieldRow, NumericInput, ResultBanner, SettingsRow } from '../../components'
 import { STAGES, type Patient, type RemissionJudgeResult } from '../../types'
 
 interface FlowPageProps {
@@ -166,13 +166,14 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
             {hba1cReliable === '是' ? (
               <FieldRow label="最近 HbA1c（%）" hint="缓解标准：低于 6.5%。">
                 {(fieldProps) => (
-                  <input
+                  <NumericInput
                     {...fieldProps}
-                    className="input num"
-                    type="number"
-                    step="0.1"
+                    unit="%"
+                    min={0}
+                    max={30}
+                    step={0.1}
                     value={hba1c}
-                    onChange={(event) => setHba1c(event.target.value)}
+                    onChange={setHba1c}
                   />
                 )}
               </FieldRow>
@@ -183,25 +184,27 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
             <div className="form-grid">
               <FieldRow label="空腹血糖 FPG（mmol/L）" hint="替代标准：低于 7.0。">
                 {(fieldProps) => (
-                  <input
+                  <NumericInput
                     {...fieldProps}
-                    className="input num"
-                    type="number"
-                    step="0.1"
+                    unit="mmol/L"
+                    min={0}
+                    max={50}
+                    step={0.1}
                     value={fpg}
-                    onChange={(event) => setFpg(event.target.value)}
+                    onChange={setFpg}
                   />
                 )}
               </FieldRow>
               <FieldRow label="CGM 估算 HbA1c（%）" hint="替代标准：低于 6.5，由医生手工录入。">
                 {(fieldProps) => (
-                  <input
+                  <NumericInput
                     {...fieldProps}
-                    className="input num"
-                    type="number"
-                    step="0.1"
+                    unit="%"
+                    min={0}
+                    max={30}
+                    step={0.1}
                     value={ea1c}
-                    onChange={(event) => setEa1c(event.target.value)}
+                    onChange={setEa1c}
                   />
                 )}
               </FieldRow>

@@ -14,9 +14,9 @@
  *   - 2026-09-20  v1.0  M5 初始实现
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
-import { authApi } from '../api/endpoints'
+import { authApi, referenceApi } from '../api/endpoints'
 import { ApiError, session } from '../api/client'
 import { ErrorBanner, FieldRow, LoadingBlock } from '../components'
 import { useAsync } from '../hooks/useAsync'
@@ -33,14 +33,28 @@ export default function LoginPage({ onLoggedIn }: LoginPageProps) {
   const [username, setUsername] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordConfirm, setPasswordConfirm] = useState('')
+  const [department, setDepartment] = useState('')
+  const [departments, setDepartments] = useState<string[]>([])
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const needsBootstrap = status.data?.needs_bootstrap ?? false
+  const registering = !needsBootstrap && mode === 'register'
+
+  useEffect(() => {
+    if (!registering || departments.length > 0) return
+    const controller = new AbortController()
+    referenceApi.get(controller.signal).then((data) => setDepartments(data.departments)).catch(() => undefined)
+    return () => controller.abort()
+  }, [registering, departments.length])
 
   /** 提交登录或创建首个账号。 */
   async function handleSubmit() {
     setError('')
+    setSuccess('')
     // 提交前校验：给出明确字段提示，不依赖后端 422
     if (username.trim().length < 3) {
       setError('登录名至少 3 个字符。')
@@ -50,12 +64,30 @@ export default function LoginPage({ onLoggedIn }: LoginPageProps) {
       setError('密码至少 8 位。')
       return
     }
-    if (needsBootstrap && displayName.trim().length === 0) {
+    if ((needsBootstrap || registering) && displayName.trim().length === 0) {
       setError('请填写界面显示姓名。')
+      return
+    }
+    if (registering && password !== passwordConfirm) {
+      setError('两次输入的密码不一致。')
       return
     }
     setSubmitting(true)
     try {
+      if (registering) {
+        const registered = await authApi.register({
+          username: username.trim(),
+          display_name: displayName.trim(),
+          department: department || null,
+          password,
+          password_confirm: passwordConfirm,
+        })
+        setSuccess(registered.message)
+        setMode('login')
+        setPassword('')
+        setPasswordConfirm('')
+        return
+      }
       const result = needsBootstrap
         ? await authApi.bootstrap({ username: username.trim(), display_name: displayName.trim(), password })
         : await authApi.login({ username: username.trim(), password })
@@ -88,11 +120,12 @@ export default function LoginPage({ onLoggedIn }: LoginPageProps) {
 
         {status.error ? <ErrorBanner message={status.error} /> : null}
         {error ? <ErrorBanner message={error} /> : null}
+        {success ? <div className="result-banner result-banner--success">{success}</div> : null}
 
         <p className="page__subtitle">
           {needsBootstrap
             ? '首次使用：请创建第一个医生账号（不设默认密码）。'
-            : '请使用医生账号登录。'}
+            : registering ? '请填写医生账号信息；注册成功后返回登录。' : '请使用医生账号登录。'}
         </p>
 
         <div className="stack">
@@ -108,7 +141,7 @@ export default function LoginPage({ onLoggedIn }: LoginPageProps) {
             )}
           </FieldRow>
 
-          {needsBootstrap ? (
+          {needsBootstrap || registering ? (
             <FieldRow label="界面显示姓名" hint="会记入临床事件流水的操作者。">
               {(fieldProps) => (
                 <input
@@ -117,6 +150,22 @@ export default function LoginPage({ onLoggedIn }: LoginPageProps) {
                   value={displayName}
                   onChange={(event) => setDisplayName(event.target.value)}
                 />
+              )}
+            </FieldRow>
+          ) : null}
+
+          {registering ? (
+            <FieldRow label="所属科室" hint="选填，用于账号信息与后续追溯。">
+              {(fieldProps) => (
+                <select
+                  {...fieldProps}
+                  className="select"
+                  value={department}
+                  onChange={(event) => setDepartment(event.target.value)}
+                >
+                  <option value="">未填写</option>
+                  {departments.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
               )}
             </FieldRow>
           ) : null}
@@ -133,11 +182,39 @@ export default function LoginPage({ onLoggedIn }: LoginPageProps) {
               />
             )}
           </FieldRow>
+
+          {registering ? (
+            <FieldRow label="再次输入密码">
+              {(fieldProps) => (
+                <input
+                  {...fieldProps}
+                  className="input"
+                  type="password"
+                  value={passwordConfirm}
+                  autoComplete="new-password"
+                  onChange={(event) => setPasswordConfirm(event.target.value)}
+                />
+              )}
+            </FieldRow>
+          ) : null}
         </div>
 
         <div className="login-actions">
+          {!needsBootstrap ? (
+            <button
+              type="button"
+              className="btn btn--text"
+              onClick={() => {
+                setMode(registering ? 'login' : 'register')
+                setError('')
+                setSuccess('')
+              }}
+            >
+              {registering ? '返回登录' : '注册医生账号'}
+            </button>
+          ) : null}
           <button type="button" className="btn btn--primary" disabled={submitting} onClick={handleSubmit}>
-            {submitting ? '正在提交…' : needsBootstrap ? '创建账号并进入系统' : '登录'}
+            {submitting ? '正在提交…' : needsBootstrap ? '创建账号并进入系统' : registering ? '注册' : '登录'}
           </button>
         </div>
       </div>

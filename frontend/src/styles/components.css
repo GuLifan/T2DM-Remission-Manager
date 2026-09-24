@@ -41,6 +41,8 @@
 
 .app-shell__content-inner {
   max-width: var(--etmms-content-max);
+  width: 100%;
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   gap: var(--etmms-space-5);
@@ -394,6 +396,59 @@
   background: var(--etmms-surface-container);
   color: var(--etmms-on-surface-disabled);
   cursor: not-allowed;
+}
+
+.input--invalid {
+  border-color: var(--etmms-error);
+}
+
+.input-with-unit {
+  position: relative;
+}
+
+.input-with-unit__control {
+  padding-right: calc(var(--etmms-space-7) + var(--etmms-space-5));
+}
+
+.input-with-unit__suffix {
+  position: absolute;
+  right: var(--etmms-space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--etmms-on-surface-variant);
+  pointer-events: none;
+}
+
+.year-month-input {
+  display: grid;
+  grid-template-columns: minmax(96px, 1fr) auto minmax(84px, 1fr) auto;
+  align-items: center;
+  gap: var(--etmms-space-2);
+}
+
+.duration-input {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--etmms-space-2);
+}
+
+.date-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--etmms-space-1);
+}
+
+.footer-bar {
+  min-height: var(--etmms-row-height);
+  padding: var(--etmms-space-3) var(--etmms-space-5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--etmms-space-4);
+  background: var(--etmms-surface);
+  border-top: var(--etmms-border-width) solid var(--etmms-outline-variant);
+  color: var(--etmms-on-surface-variant);
+  font-size: var(--etmms-text-caption);
 }
 
 /* ===================== 选择组（含互斥与优先级） ===================== */
@@ -751,4 +806,17 @@
   justify-content: flex-end;
   gap: var(--etmms-space-3);
   margin-top: var(--etmms-space-2);
+}
+
+.import-dialog {
+  width: min(720px, calc(100vw - 2 * var(--etmms-space-5)));
+  max-height: calc(100vh - 2 * var(--etmms-space-5));
+  overflow-y: auto;
+}
+
+.import-result-list {
+  margin: 0;
+  padding-left: var(--etmms-space-5);
+  color: var(--etmms-on-surface-variant);
+  font-size: var(--etmms-text-caption);
 }

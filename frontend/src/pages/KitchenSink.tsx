@@ -20,6 +20,7 @@ import {
   CheckboxGroup,
   ChoiceGroup,
   ConfirmDialog,
+  DateInput,
   EmptyState,
   ErrorBanner,
   EvidenceDrawer,
@@ -77,7 +78,7 @@ export default function KitchenSink() {
       <div className="app-shell__main">
         <PageHeader
           title="阶段复评与治疗调整"
-          context="演示患者 · 女 · 病历号 ZY0001 · 主动管理—缓解诱导阶段"
+          context="演示患者 · 女 · 住院号 ZY0001 · 主动管理—缓解诱导阶段"
           actions={
             <>
               <StatusBadge tone="neutral">缓解诱导阶段</StatusBadge>
@@ -130,7 +131,7 @@ export default function KitchenSink() {
                 />
                 <SettingsRow
                   label="结构化生活方式干预开始日期"
-                  control={<input className="input num" type="date" aria-label="生活方式干预开始日期" />}
+                  control={<DateInput value="" onChange={() => undefined} />}
                   description="用于计算最早可判定日期：与停药满 3 个月取较晚者。"
                 />
                 <SettingsRow
@@ -186,13 +187,11 @@ export default function KitchenSink() {
                 <div className="settings-row settings-row--stacked">
                   <FieldRow label="停药日期" hint="选择「停用最后一种药物」后必填，作为观察期的时间锚点。">
                     {(fieldProps) => (
-                      <input
+                      <DateInput
                         {...fieldProps}
-                        className="input num"
-                        type="date"
                         value={stopDate}
                         disabled={branch !== 'stop_last_med'}
-                        onChange={(event) => setStopDate(event.target.value)}
+                        onChange={setStopDate}
                       />
                     )}
                   </FieldRow>

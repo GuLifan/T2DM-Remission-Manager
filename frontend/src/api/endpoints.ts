@@ -19,6 +19,7 @@ import type {
   ObservationStatus,
   Patient,
   PatientCreateIn,
+  PatientImportOut,
   PhaseReviewResult,
   PostRemissionResult,
   PreAssessmentResult,
@@ -26,6 +27,7 @@ import type {
   StateOut,
   TestContextOut,
   UserOut,
+  ReferenceData,
 } from '../types'
 
 /** 账号相关接口。 */
@@ -35,6 +37,13 @@ export const authApi = {
     api.post<LoginOut>('/api/auth/bootstrap', payload),
   login: (payload: { username: string; password: string }) =>
     api.post<LoginOut>('/api/auth/login', payload),
+  register: (payload: {
+    username: string
+    display_name: string
+    department: string | null
+    password: string
+    password_confirm: string
+  }) => api.post<{ message: string }>('/api/auth/register', payload),
   logout: () => api.post<void>('/api/auth/logout'),
   me: (signal?: AbortSignal) => api.get<UserOut>('/api/auth/me', signal),
 }
@@ -43,10 +52,27 @@ export const authApi = {
 export const patientApi = {
   list: (signal?: AbortSignal) => api.get<Patient[]>('/api/patients', signal),
   create: (payload: PatientCreateIn) => api.post<Patient>('/api/patients', payload),
+  updateProfile: (id: number, payload: PatientCreateIn) =>
+    api.put<Patient>(`/api/patients/${id}/profile`, payload),
+  importFile: (file: File) => {
+    const body = new FormData()
+    body.append('file', file)
+    return api.post<PatientImportOut>('/api/patients/import', body)
+  },
   get: (id: number, signal?: AbortSignal) => api.get<Patient>(`/api/patients/${id}`, signal),
   events: (id: number, signal?: AbortSignal) =>
     api.get<EventPage>(`/api/patients/${id}/events?limit=20`, signal),
   reopen: (id: number) => api.post<Patient>(`/api/patients/${id}/reopen`),
+}
+
+/** 登录前后均可读取的非敏感参考字典。 */
+export const referenceApi = {
+  get: (signal?: AbortSignal) => api.get<ReferenceData>('/api/reference', signal),
+}
+
+/** 页脚显示实际运行版本，不在前端写死。 */
+export const systemApi = {
+  health: (signal?: AbortSignal) => api.get<{ status: string; version: string }>('/api/health', signal),
 }
 
 /** 领域数据（由后端导出，前端只渲染不硬编码）。 */

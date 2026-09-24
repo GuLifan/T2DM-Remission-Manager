@@ -17,13 +17,14 @@
 import { useMemo, useState } from 'react'
 
 import { ApiError } from '../api/client'
-import { domainApi, patientApi, testSupportApi } from '../api/endpoints'
+import { domainApi, patientApi, referenceApi, testSupportApi } from '../api/endpoints'
 import {
   DateControl,
   ErrorBanner,
   EvidenceDrawer,
   LoadingBlock,
   PageHeader,
+  PatientProfileForm,
   SideNav,
   StatusBadge,
   TaskPanel,
@@ -73,6 +74,7 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
   const states = useAsync((signal) => domainApi.states(signal), [])
   const events = useAsync((signal) => patientApi.events(patientId, signal), [patientId])
   const testContext = useAsync((signal) => testSupportApi.context(signal), [])
+  const references = useAsync((signal) => referenceApi.get(signal), [])
 
   // 测试入口必须同时满足：后端开放能力 + 当前患者明确标记为测试患者
   const testToolsEnabled = Boolean(
@@ -139,7 +141,11 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
 
   /** 按当前状态渲染对应流程页面。 */
   function renderCurrentStep(loaded: Patient) {
-    const props = { patient: loaded, onUpdated: () => { patient.reload(); events.reload() } }
+    const props = {
+      patient: loaded,
+      eventCount: events.data?.total ?? 0,
+      onUpdated: () => { patient.reload(); events.reload() },
+    }
     switch (loaded.current_state) {
       case 'ST00':
         return <RegularCarePage {...props} />
@@ -209,7 +215,7 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
       <div className="app-shell__main">
         <PageHeader
           title={viewUnitKey ? `${navItems.find((item) => item.key === viewUnitKey)?.label ?? ''}（回看）` : currentStateName}
-          context={`${loaded.name} · ${loaded.gender} · 病历号 ${loaded.medical_record_no} · 当前医生 ${currentUser.display_name}`}
+          context={`${loaded.name} · ${loaded.gender} · 住院号 ${loaded.medical_record_no}${loaded.department ? ` · ${loaded.department}` : ''} · 当前医生 ${currentUser.display_name}`}
           actions={
             <>
               <DateControl onDateChanged={onBack} />
@@ -228,7 +234,13 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
             {states.error ? <ErrorBanner message={states.error} /> : null}
             {testContext.error ? <ErrorBanner message={testContext.error} /> : null}
 
-            {!viewUnitKey ? (
+            {loaded.profile_complete === false ? (
+              <PatientProfileForm
+                patient={loaded}
+                departments={references.data?.departments ?? [loaded.department]}
+                onSaved={() => patient.reload()}
+              />
+            ) : !viewUnitKey ? (
               <TaskPanel
                 title={currentStateName}
                 description={TASK_DESCRIPTIONS[loaded.current_state] ?? '请完成当前环节要求。'}
@@ -237,7 +249,7 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
               </TaskPanel>
             ) : null}
 
-            {testToolsEnabled && states.data && !viewUnitKey ? (
+            {loaded.profile_complete !== false && testToolsEnabled && states.data && !viewUnitKey ? (
               <TestToolsPanel
                 states={states.data}
                 currentState={loaded.current_state}
@@ -247,7 +259,7 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
               />
             ) : null}
 
-            {viewUnitKey ? (
+            {loaded.profile_complete === false ? null : viewUnitKey ? (
               /* 只读回看已完成环节（不提供任何会改变状态的控件） */
               <section className="section">
                 <h2 className="section__title">该环节的历史记录</h2>
@@ -278,7 +290,7 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
               renderCurrentStep(loaded)
             )}
 
-            {!viewUnitKey ? (
+            {loaded.profile_complete !== false && !viewUnitKey ? (
               <section className="section">
                 <h2 className="section__title">本次管理记录</h2>
                 <p className="section__description">按时间倒序展示，供医生回看每一步的自然语言结论。</p>

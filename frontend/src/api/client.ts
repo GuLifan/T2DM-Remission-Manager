@@ -83,7 +83,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     else options.signal.addEventListener('abort', () => controller.abort(), { once: true })
   }
 
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  // FormData 必须让浏览器自行生成 multipart boundary；JSON 请求才显式声明类型。
+  const isFormData = options.body instanceof FormData
+  const headers: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' }
   const token = session.token
   if (token) headers.Authorization = `Bearer ${token}`
 
@@ -92,7 +94,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     response = await fetch(path, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body:
+        options.body === undefined
+          ? undefined
+          : isFormData
+            ? (options.body as FormData)
+            : JSON.stringify(options.body),
       signal: controller.signal,
     })
   } catch (error) {
@@ -127,4 +134,6 @@ export const api = {
   get: <T>(path: string, signal?: AbortSignal) => request<T>(path, { signal }),
   post: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
     request<T>(path, { method: 'POST', body, signal }),
+  put: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
+    request<T>(path, { method: 'PUT', body, signal }),
 }

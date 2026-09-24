@@ -4,8 +4,8 @@
  * 功能说明：患者列表与建档。建档成功后进入患者工作台继续完成预评估。
  *
  * 交互要点：
- *   - 表单提交前就地校验（姓名、病历号、出生日期必填）；
- *   - 病历号重复由后端给出自然语言提示，直接展示；
+ *   - 表单提交前就地校验（姓名、住院号、出生年月、当前科室必填）；
+ *   - 住院号重复由后端给出自然语言提示，直接展示；
  *   - 列表为空时给出空态与明确动作。
  *
  * 修改历史：
@@ -15,15 +15,17 @@
 import { useMemo, useState } from 'react'
 
 import { ApiError } from '../api/client'
-import { domainApi, patientApi } from '../api/endpoints'
+import { domainApi, patientApi, referenceApi } from '../api/endpoints'
 import {
   DateControl,
   EmptyState,
   ErrorBanner,
   FieldRow,
+  ImportDialog,
   LoadingBlock,
   PageHeader,
   StatusBadge,
+  YearMonthInput,
 } from '../components'
 import { useAsync } from '../hooks/useAsync'
 import type { Patient, UserOut } from '../types'
@@ -41,10 +43,15 @@ interface PatientListPageProps {
 export default function PatientListPage({ currentUser, onOpenPatient, onLogout }: PatientListPageProps) {
   const patients = useAsync((signal) => patientApi.list(signal), [])
   const states = useAsync((signal) => domainApi.states(signal), [])
+  const references = useAsync((signal) => referenceApi.get(signal), [])
   const [name, setName] = useState('')
   const [gender, setGender] = useState<'男' | '女'>('女')
-  const [birthDate, setBirthDate] = useState('')
+  const [birthYear, setBirthYear] = useState('')
+  const [birthMonth, setBirthMonth] = useState('')
   const [medicalRecordNo, setMedicalRecordNo] = useState('')
+  const [department, setDepartment] = useState('内分泌科')
+  const [contactPhone, setContactPhone] = useState('')
+  const [importOpen, setImportOpen] = useState(false)
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
 
@@ -60,8 +67,8 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
   /** 建立患者档案并进入工作台。 */
   async function handleCreate() {
     setError('')
-    if (!name.trim() || !medicalRecordNo.trim() || !birthDate) {
-      setError('请填写姓名、出生日期和病历号。')
+    if (!name.trim() || !medicalRecordNo.trim() || !birthYear || !birthMonth || !department) {
+      setError('请填写姓名、出生年月、住院号和当前科室。')
       return
     }
     setCreating(true)
@@ -69,8 +76,10 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
       const created: Patient = await patientApi.create({
         name: name.trim(),
         gender,
-        birth_date: birthDate,
+        birth_date: `${birthYear}-${birthMonth.padStart(2, '0')}-01`,
         medical_record_no: medicalRecordNo.trim(),
+        department,
+        contact_phone: contactPhone.trim() || null,
       })
       onOpenPatient(created.id)
     } catch (caught) {
@@ -97,7 +106,12 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
 
       <div className="page__body">
         <section className="section">
-          <h2 className="section__title">建立患者档案</h2>
+          <div className="section-heading">
+            <h2 className="section__title">建立患者档案</h2>
+            <button type="button" className="btn btn--outlined" onClick={() => setImportOpen(true)}>
+              从表格批量导入
+            </button>
+          </div>
           <p className="section__description">
             建档后患者进入常规糖尿病综合管理，可由医生发起 60 秒缓解预评估。
           </p>
@@ -114,7 +128,7 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
                   />
                 )}
               </FieldRow>
-              <FieldRow label="病历号" hint="同一病历号不可重复建档。">
+              <FieldRow label="住院号" hint="同一住院号不可重复建档。">
                 {(fieldProps) => (
                   <input
                     {...fieldProps}
@@ -137,15 +151,27 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
                   </select>
                 )}
               </FieldRow>
-              <FieldRow label="出生日期">
+              <FieldRow label="出生年月" hint="系统仅记录到月，日固定为 1。">
                 {(fieldProps) => (
-                  <input
+                  <YearMonthInput
                     {...fieldProps}
-                    className="input num"
-                    type="date"
-                    value={birthDate}
-                    onChange={(event) => setBirthDate(event.target.value)}
+                    year={birthYear}
+                    month={birthMonth}
+                    onYearChange={setBirthYear}
+                    onMonthChange={setBirthMonth}
                   />
+                )}
+              </FieldRow>
+              <FieldRow label="当前科室">
+                {(fieldProps) => (
+                  <select {...fieldProps} className="select" value={department} onChange={(event) => setDepartment(event.target.value)}>
+                    {(references.data?.departments ?? ['内分泌科']).map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                )}
+              </FieldRow>
+              <FieldRow label="联系方式" hint="选填；请填写院内允许记录的联系方式。">
+                {(fieldProps) => (
+                  <input {...fieldProps} className="input num" value={contactPhone} onChange={(event) => setContactPhone(event.target.value)} />
                 )}
               </FieldRow>
             </div>
@@ -178,7 +204,8 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
                     <tr>
                       <th>姓名</th>
                       <th>性别</th>
-                      <th>病历号</th>
+                      <th>住院号</th>
+                      <th>当前科室</th>
                       <th>当前环节</th>
                       <th aria-label="操作" />
                     </tr>
@@ -189,9 +216,11 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
                         <td>{patient.name}</td>
                         <td>{patient.gender}</td>
                         <td className="num">{patient.medical_record_no}</td>
+                        <td>{patient.department}</td>
                         {/* 只显示后端领域表提供的自然语言状态名，不泄漏状态代码 */}
                         <td>
                           {stateNames.get(patient.current_state) ?? patient.stage ?? '当前管理环节'}
+                          {!patient.profile_complete ? <StatusBadge tone="warning">待完善资料</StatusBadge> : null}
                           {patient.is_test_patient ? <StatusBadge tone="neutral">测试患者</StatusBadge> : null}
                         </td>
                         <td className="table__actions">
@@ -214,6 +243,12 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
           ) : null}
         </section>
       </div>
+      <ImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImport={patientApi.importFile}
+        onCompleted={patients.reload}
+      />
     </div>
   )
 }

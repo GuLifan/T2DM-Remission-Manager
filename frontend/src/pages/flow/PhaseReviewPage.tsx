@@ -19,6 +19,7 @@ import { domainApi, flowApi } from '../../api/endpoints'
 import {
   CheckboxGroup,
   ChoiceGroup,
+  DateInput,
   ErrorBanner,
   FieldRow,
   ResultBanner,
@@ -302,12 +303,10 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
           {branchKey === 'stop_last_med' ? (
             <FieldRow label="停用最后一种具有降糖作用药物的日期" hint="记录后系统自动进入缓解观察期，无需其他操作。">
               {(fieldProps) => (
-                <input
+                <DateInput
                   {...fieldProps}
-                  className="input num"
-                  type="date"
                   value={stopDate}
-                  onChange={(event) => setStopDate(event.target.value)}
+                  onChange={setStopDate}
                 />
               )}
             </FieldRow>
@@ -390,12 +389,10 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
 
           <FieldRow label="下次正式复评日期" hint="留空按默认 12 周计算。">
             {(fieldProps) => (
-              <input
+              <DateInput
                 {...fieldProps}
-                className="input num"
-                type="date"
                 value={nextReviewDate}
-                onChange={(event) => setNextReviewDate(event.target.value)}
+                onChange={setNextReviewDate}
               />
             )}
           </FieldRow>

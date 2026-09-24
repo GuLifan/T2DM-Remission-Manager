@@ -14,7 +14,7 @@ import { useState } from 'react'
 
 import { ApiError } from '../../api/client'
 import { flowApi } from '../../api/endpoints'
-import { CheckboxGroup, ErrorBanner, FieldRow, ResultBanner, SettingsRow } from '../../components'
+import { CheckboxGroup, DateInput, ErrorBanner, FieldRow, ResultBanner, SettingsRow } from '../../components'
 import {
   GLUCOSE_BELOW,
   GLUCOSE_DIABETIC,
@@ -132,12 +132,10 @@ export default function PostRemissionPage({ patient, onUpdated }: FlowPageProps)
             </FieldRow>
             <FieldRow label="下次复评日期" hint="留空按随访节奏自动计算。">
               {(fieldProps) => (
-                <input
+                <DateInput
                   {...fieldProps}
-                  className="input num"
-                  type="date"
                   value={nextReviewDate}
-                  onChange={(event) => setNextReviewDate(event.target.value)}
+                  onChange={setNextReviewDate}
                 />
               )}
             </FieldRow>

@@ -14,6 +14,7 @@ export interface UserOut {
   id: number
   username: string
   display_name: string
+  department?: string | null
   role: string
   is_test_account: boolean
   simulated_date: string | null
@@ -37,7 +38,14 @@ export interface Patient {
   gender: string
   birth_date: string
   medical_record_no: string
+  department: string
+  contact_phone: string | null
+  created_by: number | null
+  profile_complete: boolean
   is_test_patient: boolean
+  height_cm: number | null
+  weight_kg: number | null
+  bmi: number | null
   current_state: string
   stage: string | null
   stage_goal: string | null
@@ -58,6 +66,28 @@ export interface PatientCreateIn {
   gender: '男' | '女'
   birth_date: string
   medical_record_no: string
+  department: string
+  contact_phone: string | null
+}
+
+export interface ReferenceData {
+  departments: string[]
+  diagnosis_bases: string[]
+  drug_classes: string[]
+}
+
+export interface ImportRowResult {
+  row: number
+  medical_record_no: string | null
+  status: 'success' | 'skipped' | 'failed'
+  message: string
+}
+
+export interface PatientImportOut {
+  success_count: number
+  skipped_count: number
+  failed_count: number
+  rows: ImportRowResult[]
 }
 
 export interface EventOut {
