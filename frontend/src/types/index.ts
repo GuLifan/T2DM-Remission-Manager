@@ -30,6 +30,12 @@ export interface LoginOut {
   user: UserOut
 }
 
+export interface AssignableDoctor {
+  id: number
+  display_name: string
+  department: string | null
+}
+
 // ===== 患者 =====
 
 export interface Patient {
@@ -41,6 +47,9 @@ export interface Patient {
   department: string
   contact_phone: string | null
   created_by: number | null
+  owner_id: number | null
+  owner_display_name: string | null
+  can_edit: boolean
   profile_complete: boolean
   is_test_patient: boolean
   height_cm: number | null
@@ -59,6 +68,7 @@ export interface Patient {
   has_glucose_lowering_drug: boolean | null
   drug_purpose: string | null
   created_at: string
+  updated_at: string
 }
 
 export interface PatientCreateIn {

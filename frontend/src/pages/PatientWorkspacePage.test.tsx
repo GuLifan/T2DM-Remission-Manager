@@ -24,6 +24,13 @@ const PATIENT = {
   gender: '女',
   birth_date: '1980-01-01',
   medical_record_no: 'MRN-UI-0001',
+  department: '内分泌科',
+  contact_phone: null,
+  created_by: 1,
+  owner_id: 1,
+  owner_display_name: '张医生',
+  can_edit: true,
+  profile_complete: true,
   is_test_patient: false,
   // 当前处于阶段复评（第 3 个单元）：前两个单元已完成，后三个未到达
   current_state: 'ST32',
@@ -39,6 +46,7 @@ const PATIENT = {
   has_glucose_lowering_drug: true,
   drug_purpose: '器官获益',
   created_at: '2026-09-01T09:00:00',
+  updated_at: '2026-09-24T09:00:00',
 }
 
 const FLOW_UNITS = [
@@ -96,6 +104,9 @@ function stubFetch(
       return Promise.resolve(jsonOk({ ...loadedPatient, current_state: 'ST40', stage: null }))
     }
     if (url.includes('/api/patients/7')) return Promise.resolve(jsonOk(loadedPatient))
+    if (url.includes('/api/auth/assignable-doctors')) {
+      return Promise.resolve(jsonOk([{ id: 2, display_name: '李医生', department: '内分泌科' }]))
+    }
     if (url.includes('/api/domain/flow-units')) return Promise.resolve(jsonOk(FLOW_UNITS))
     if (url.includes('/api/domain/branches')) return Promise.resolve(jsonOk(branches))
     if (url.includes('/api/domain/states')) {
@@ -263,6 +274,47 @@ describe('PatientWorkspacePage 导航规则', () => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/patients/7/debug/jump-state',
         expect.objectContaining({ method: 'POST' }),
+      )
+    })
+  })
+
+  it('非责任医生工作台显示明确只读原因并禁用流程写控件', async () => {
+    stubFetch([], {
+      patient: { ...PATIENT, owner_id: 2, owner_display_name: '李医生', can_edit: false },
+    })
+    render(
+      <PatientWorkspacePage
+        patientId={7}
+        currentUser={{ id: 1, username: 'doctor', display_name: '张医生', role: 'doctor', is_test_account: false, simulated_date: null }}
+        onBack={() => undefined}
+      />,
+    )
+
+    expect(await screen.findByText('您的账户暂无权限编辑此条记录')).toBeInTheDocument()
+    expect(screen.getByText(/只读 · 责任医生：李医生/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '记录复评结论' })).toBeDisabled()
+  })
+
+  it('管理员转移责任医生前要求二次确认并调用转移接口', async () => {
+    const fetchMock = stubFetch()
+    const user = userEvent.setup()
+    render(
+      <PatientWorkspacePage
+        patientId={7}
+        currentUser={{ id: 9, username: 'admin', display_name: '管理员', role: 'admin', is_test_account: false, simulated_date: null }}
+        onBack={() => undefined}
+      />,
+    )
+
+    await user.click(await screen.findByRole('button', { name: '转移责任医生' }))
+    await user.selectOptions(screen.getByLabelText('新的责任医生'), '2')
+    await user.click(screen.getByRole('button', { name: '下一步：核对变更' }))
+    expect(screen.getByText(/将从“张医生”转给“李医生”/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '确认转移责任医生' }))
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/patients/7/owner',
+        expect.objectContaining({ method: 'PUT' }),
       )
     })
   })

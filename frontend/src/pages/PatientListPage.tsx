@@ -15,7 +15,7 @@
 import { useMemo, useState } from 'react'
 
 import { ApiError } from '../api/client'
-import { domainApi, patientApi, referenceApi } from '../api/endpoints'
+import { domainApi, patientApi, referenceApi, testSupportApi } from '../api/endpoints'
 import {
   DateControl,
   EmptyState,
@@ -39,11 +39,55 @@ interface PatientListPageProps {
   onLogout: () => void
 }
 
+type SortKey = 'name' | 'medical_record_no' | 'updated_at' | 'next_review_date' | 'current_state'
+type SortDirection = 'asc' | 'desc'
+type DueState = 'overdue' | 'today' | 'future' | 'none'
+
+const DUE_RANK: Record<DueState, number> = { overdue: 0, today: 1, future: 2, none: 3 }
+
+/** 取本机自然日，避免 UTC 转换把中国时区日期回退一天。 */
+function localIsoDate(): string {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
+export function dueState(patient: Patient, effectiveToday: string): DueState {
+  if (!patient.next_review_date) return 'none'
+  if (patient.next_review_date < effectiveToday) return 'overdue'
+  if (patient.next_review_date === effectiveToday) return 'today'
+  return 'future'
+}
+
+function compareText(left: string, right: string): number {
+  return left.localeCompare(right, 'zh-CN', { numeric: true, sensitivity: 'base' })
+}
+
+interface SortableHeaderProps {
+  label: string
+  field: SortKey
+  active: { key: SortKey; direction: SortDirection } | null
+  onSort: (field: SortKey) => void
+}
+
+function SortableHeader({ label, field, active, onSort }: SortableHeaderProps) {
+  const direction = active?.key === field ? active.direction : null
+  return (
+    <th aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
+      <button type="button" className="table-sort" onClick={() => onSort(field)}>
+        {label}<span aria-hidden="true">{direction === 'asc' ? ' ↑' : direction === 'desc' ? ' ↓' : ' ↕'}</span>
+      </button>
+    </th>
+  )
+}
+
 /** 患者列表 + 建档。 */
 export default function PatientListPage({ currentUser, onOpenPatient, onLogout }: PatientListPageProps) {
   const patients = useAsync((signal) => patientApi.list(signal), [])
   const states = useAsync((signal) => domainApi.states(signal), [])
   const references = useAsync((signal) => referenceApi.get(signal), [])
+  const testContext = useAsync((signal) => testSupportApi.context(signal), [])
   const [name, setName] = useState('')
   const [gender, setGender] = useState<'男' | '女'>('女')
   const [birthYear, setBirthYear] = useState('')
@@ -54,6 +98,8 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
   const [importOpen, setImportOpen] = useState(false)
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection } | null>(null)
 
   /**
    * 患者列表必须显示“当前状态”，不能用仅适用于主动管理期的 stage 字段代替。
@@ -63,6 +109,46 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
     () => new Map((states.data ?? []).map((state) => [state.code, state.name])),
     [states.data],
   )
+  const effectiveToday = testContext.data?.effective_date ?? localIsoDate()
+
+  /** 搜索与排序仅作用于一次加载到前端的完整列表；本批明确不分页。 */
+  const visiblePatients = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase('zh-CN')
+    const filtered = (patients.data ?? []).filter((patient) => {
+      if (!normalizedQuery) return true
+      return (
+        patient.name.toLocaleLowerCase('zh-CN').includes(normalizedQuery) ||
+        patient.medical_record_no.toLocaleLowerCase('zh-CN').includes(normalizedQuery)
+      )
+    })
+    return [...filtered].sort((left, right) => {
+      if (!sort) {
+        const dueDifference = DUE_RANK[dueState(left, effectiveToday)] - DUE_RANK[dueState(right, effectiveToday)]
+        if (dueDifference !== 0) return dueDifference
+        return right.updated_at.localeCompare(left.updated_at)
+      }
+      const leftValue = sort.key === 'current_state'
+        ? stateNames.get(left.current_state) ?? ''
+        : left[sort.key] ?? ''
+      const rightValue = sort.key === 'current_state'
+        ? stateNames.get(right.current_state) ?? ''
+        : right[sort.key] ?? ''
+      // 空复评日期始终放在末尾，避免降序时“无日期”跑到最前。
+      if (sort.key === 'next_review_date') {
+        if (!leftValue && rightValue) return 1
+        if (leftValue && !rightValue) return -1
+      }
+      const compared = compareText(String(leftValue), String(rightValue))
+      return sort.direction === 'asc' ? compared : -compared
+    })
+  }, [effectiveToday, patients.data, query, sort, stateNames])
+
+  function toggleSort(key: SortKey) {
+    setSort((current) => ({
+      key,
+      direction: current?.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }))
+  }
 
   /** 建立患者档案并进入工作台。 */
   async function handleCreate() {
@@ -184,7 +270,24 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
         </section>
 
         <section className="section">
-          <h2 className="section__title">患者列表</h2>
+          <div className="section-heading">
+            <div>
+              <h2 className="section__title">患者列表</h2>
+              <p className="section__description">
+                共 {patients.data?.length ?? 0} 位患者{query.trim() ? `，当前显示 ${visiblePatients.length} 位` : ''}。
+              </p>
+            </div>
+            <label className="patient-search">
+              <span className="sr-only">搜索患者姓名或住院号</span>
+              <input
+                className="input"
+                type="search"
+                value={query}
+                placeholder="搜索姓名或住院号"
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+          </div>
           {patients.loading ? <LoadingBlock message="正在读取患者列表…" /> : null}
           {patients.error ? (
             <ErrorBanner
@@ -198,25 +301,36 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
           ) : null}
           {!patients.loading && !patients.error ? (
             patients.data && patients.data.length > 0 ? (
-              <div className="card">
+              <div className="card table-card">
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>姓名</th>
-                      <th>性别</th>
-                      <th>住院号</th>
-                      <th>当前科室</th>
-                      <th>当前环节</th>
+                      <SortableHeader label="姓名" field="name" active={sort} onSort={toggleSort} />
+                      <SortableHeader label="住院号" field="medical_record_no" active={sort} onSort={toggleSort} />
+                      <th>责任医生</th>
+                      <SortableHeader label="最后编辑" field="updated_at" active={sort} onSort={toggleSort} />
+                      <SortableHeader label="下次复评" field="next_review_date" active={sort} onSort={toggleSort} />
+                      <SortableHeader label="当前环节" field="current_state" active={sort} onSort={toggleSort} />
                       <th aria-label="操作" />
                     </tr>
                   </thead>
                   <tbody>
-                    {patients.data.map((patient) => (
-                      <tr key={patient.id}>
-                        <td>{patient.name}</td>
-                        <td>{patient.gender}</td>
+                    {visiblePatients.map((patient) => {
+                      const due = dueState(patient, effectiveToday)
+                      return (
+                      <tr className={`patient-row patient-row--${due}`} key={patient.id}>
+                        <td>
+                          {patient.name}
+                          {!patient.can_edit ? <StatusBadge tone="neutral">只读</StatusBadge> : null}
+                        </td>
                         <td className="num">{patient.medical_record_no}</td>
-                        <td>{patient.department}</td>
+                        <td>{patient.owner_display_name ?? '未指定'}</td>
+                        <td className="num">{patient.updated_at.replace('T', ' ').slice(0, 16).replaceAll('-', '/')}</td>
+                        <td className="num">
+                          {patient.next_review_date?.replaceAll('-', '/') ?? '—'}
+                          {due === 'overdue' ? <StatusBadge tone="warning">已逾期</StatusBadge> : null}
+                          {due === 'today' ? <StatusBadge tone="success">今日到期</StatusBadge> : null}
+                        </td>
                         {/* 只显示后端领域表提供的自然语言状态名，不泄漏状态代码 */}
                         <td>
                           {stateNames.get(patient.current_state) ?? patient.stage ?? '当前管理环节'}
@@ -233,9 +347,11 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
+                {visiblePatients.length === 0 ? <EmptyState message="没有匹配的患者。" /> : null}
               </div>
             ) : (
               <EmptyState message="暂无患者档案。" />

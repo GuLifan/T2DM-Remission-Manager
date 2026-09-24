@@ -143,6 +143,75 @@
   white-space: nowrap;
 }
 
+.table-card {
+  overflow-x: auto;
+}
+
+.table-sort {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.patient-search {
+  width: min(360px, 100%);
+}
+
+.patient-row--overdue {
+  background: var(--etmms-warning-container);
+}
+
+.patient-row--today {
+  background: var(--etmms-success-container);
+}
+
+.permission-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--etmms-space-1);
+  padding: var(--etmms-space-3) var(--etmms-space-4);
+  color: var(--etmms-on-warning-container);
+  background: var(--etmms-warning-container);
+  border-radius: var(--etmms-radius-sm);
+}
+
+.permission-lock {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.permission-lock:disabled {
+  opacity: 0.72;
+}
+
+.ownership-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--etmms-space-3);
+  padding: var(--etmms-space-3) var(--etmms-space-4);
+  background: var(--etmms-surface-container);
+  border-radius: var(--etmms-radius-sm);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ===================== 键值列表（时间锚点等只读信息） ===================== */
 .kv {
   list-style: none;

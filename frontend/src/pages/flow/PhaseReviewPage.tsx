@@ -22,6 +22,7 @@ import {
   DateInput,
   ErrorBanner,
   FieldRow,
+  NumericInput,
   ResultBanner,
   SettingsRow,
 } from '../../components'
@@ -55,6 +56,8 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
   const [stageIndicator, setStageIndicator] = useState('')
   const [executable, setExecutable] = useState('')
   const [nextReviewDate, setNextReviewDate] = useState('')
+  const [weight, setWeight] = useState(patient.weight_kg == null ? '' : String(patient.weight_kg))
+  const [height, setHeight] = useState(patient.height_cm == null ? '' : String(patient.height_cm))
 
   // 常规动作相关
   const [action, setAction] = useState<string>(ACT_CONTINUE)
@@ -87,6 +90,8 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
   /** 按所选分支组装请求体（前端保证互斥，后端仍会二次裁决）。 */
   function buildPayload(): Record<string, unknown> {
     const base = {
+      f018_weight: weight === '' ? null : Number(weight),
+      f019_height: height === '' ? null : Number(height),
       f030_safety_issues: safetyIssues,
       f031_stage_indicator: stageIndicator || null,
       f032_treatment_changes: treatmentChanges,
@@ -152,6 +157,32 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
           {error ? <ErrorBanner message={error} /> : null}
 
           <div className="form-grid">
+            <FieldRow label="本次体重" hint="选填；留空沿用患者最新值。">
+              {(fieldProps) => (
+                <NumericInput
+                  {...fieldProps}
+                  value={weight}
+                  onChange={setWeight}
+                  unit="kg"
+                  min={0.1}
+                  max={500}
+                  step={0.1}
+                />
+              )}
+            </FieldRow>
+            <FieldRow label="本次身高" hint="选填；留空沿用患者最新值。">
+              {(fieldProps) => (
+                <NumericInput
+                  {...fieldProps}
+                  value={height}
+                  onChange={setHeight}
+                  unit="cm"
+                  min={50}
+                  max={250}
+                  step={0.1}
+                />
+              )}
+            </FieldRow>
             <FieldRow label="一个主要阶段指标">
               {(fieldProps) => (
                 <input
@@ -179,6 +210,9 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
               )}
             </FieldRow>
           </div>
+          <p className="section__description">
+            当前 BMI：{height && weight ? (Number(weight) / ((Number(height) / 100) ** 2)).toFixed(1) : patient.bmi ?? '—'}（仅作数值快照，不参与自动裁决）
+          </p>
 
           <SettingsRow
             label="新发生的安全问题（可多选）"

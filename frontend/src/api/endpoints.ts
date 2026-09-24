@@ -9,6 +9,7 @@
 
 import { api, newRequestId } from './client'
 import type {
+  AssignableDoctor,
   AuthStatusOut,
   BranchOut,
   EventPage,
@@ -46,6 +47,8 @@ export const authApi = {
   }) => api.post<{ message: string }>('/api/auth/register', payload),
   logout: () => api.post<void>('/api/auth/logout'),
   me: (signal?: AbortSignal) => api.get<UserOut>('/api/auth/me', signal),
+  assignableDoctors: (signal?: AbortSignal) =>
+    api.get<AssignableDoctor[]>('/api/auth/assignable-doctors', signal),
 }
 
 /** 患者档案相关接口。 */
@@ -63,6 +66,8 @@ export const patientApi = {
   events: (id: number, signal?: AbortSignal) =>
     api.get<EventPage>(`/api/patients/${id}/events?limit=20`, signal),
   reopen: (id: number) => api.post<Patient>(`/api/patients/${id}/reopen`),
+  transferOwner: (id: number, ownerId: number) =>
+    api.put<Patient>(`/api/patients/${id}/owner`, { owner_id: ownerId }),
 }
 
 /** 登录前后均可读取的非敏感参考字典。 */

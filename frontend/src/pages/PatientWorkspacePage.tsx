@@ -17,14 +17,16 @@
 import { useMemo, useState } from 'react'
 
 import { ApiError } from '../api/client'
-import { domainApi, patientApi, referenceApi, testSupportApi } from '../api/endpoints'
+import { authApi, domainApi, patientApi, referenceApi, testSupportApi } from '../api/endpoints'
 import {
   DateControl,
   ErrorBanner,
   EvidenceDrawer,
   LoadingBlock,
+  OwnershipTransferDialog,
   PageHeader,
   PatientProfileForm,
+  PermissionNotice,
   SideNav,
   StatusBadge,
   TaskPanel,
@@ -68,6 +70,8 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
   const [evidenceOpen, setEvidenceOpen] = useState(false)
   const [jumping, setJumping] = useState(false)
   const [jumpError, setJumpError] = useState('')
+  const [transferError, setTransferError] = useState('')
+  const [transferring, setTransferring] = useState(false)
 
   // 流程单元定义由后端导出（前端不硬编码）
   const flowUnits = useAsync((signal) => domainApi.flowUnits(signal), [])
@@ -75,11 +79,31 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
   const events = useAsync((signal) => patientApi.events(patientId, signal), [patientId])
   const testContext = useAsync((signal) => testSupportApi.context(signal), [])
   const references = useAsync((signal) => referenceApi.get(signal), [])
+  const assignableDoctors = useAsync(
+    (signal) => currentUser.role === 'admin' ? authApi.assignableDoctors(signal) : Promise.resolve([]),
+    [currentUser.role],
+  )
 
   // 测试入口必须同时满足：后端开放能力 + 当前患者明确标记为测试患者
   const testToolsEnabled = Boolean(
-    testContext.data?.can_use_test_tools && patient.data?.is_test_patient,
+    testContext.data?.can_use_test_tools && patient.data?.is_test_patient && patient.data?.can_edit,
   )
+
+  /** 只有管理员会看到入口；后端仍独立执行正式角色校验。 */
+  async function transferOwner(ownerId: number) {
+    setTransferError('')
+    setTransferring(true)
+    try {
+      await patientApi.transferOwner(patientId, ownerId)
+      patient.reload()
+    } catch (caught) {
+      const message = caught instanceof ApiError ? caught.message : '转移责任医生失败，请重试。'
+      setTransferError(message)
+      throw caught
+    } finally {
+      setTransferring(false)
+    }
+  }
 
   /** 当前状态所属单元序号（用于判断已完成/未到达）。 */
   const currentIndex = useMemo(() => {
@@ -215,7 +239,7 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
       <div className="app-shell__main">
         <PageHeader
           title={viewUnitKey ? `${navItems.find((item) => item.key === viewUnitKey)?.label ?? ''}（回看）` : currentStateName}
-          context={`${loaded.name} · ${loaded.gender} · 住院号 ${loaded.medical_record_no}${loaded.department ? ` · ${loaded.department}` : ''} · 当前医生 ${currentUser.display_name}`}
+          context={`${loaded.name} · ${loaded.gender} · 住院号 ${loaded.medical_record_no}${loaded.department ? ` · ${loaded.department}` : ''} · 责任医生 ${loaded.owner_display_name ?? '未指定'} · 当前账号 ${currentUser.display_name}`}
           actions={
             <>
               <DateControl onDateChanged={onBack} />
@@ -233,13 +257,32 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
             {flowUnits.error ? <ErrorBanner message={flowUnits.error} /> : null}
             {states.error ? <ErrorBanner message={states.error} /> : null}
             {testContext.error ? <ErrorBanner message={testContext.error} /> : null}
+            {assignableDoctors.error && currentUser.role === 'admin' ? (
+              <ErrorBanner message={assignableDoctors.error} />
+            ) : null}
+
+            {!loaded.can_edit ? <PermissionNotice ownerName={loaded.owner_display_name} /> : null}
+            {currentUser.role === 'admin' ? (
+              <div className="ownership-toolbar">
+                <span>当前责任医生：{loaded.owner_display_name ?? '未指定'}</span>
+                <OwnershipTransferDialog
+                  patient={loaded}
+                  doctors={assignableDoctors.data ?? []}
+                  transferring={transferring}
+                  error={transferError}
+                  onTransfer={transferOwner}
+                />
+              </div>
+            ) : null}
 
             {loaded.profile_complete === false ? (
-              <PatientProfileForm
-                patient={loaded}
-                departments={references.data?.departments ?? [loaded.department]}
-                onSaved={() => patient.reload()}
-              />
+              <fieldset className="permission-lock" disabled={!loaded.can_edit}>
+                <PatientProfileForm
+                  patient={loaded}
+                  departments={references.data?.departments ?? [loaded.department]}
+                  onSaved={() => patient.reload()}
+                />
+              </fieldset>
             ) : !viewUnitKey ? (
               <TaskPanel
                 title={currentStateName}
@@ -286,8 +329,12 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
                   </button>
                 </div>
               </section>
-            ) : (
+            ) : loaded.can_edit ? (
               renderCurrentStep(loaded)
+            ) : (
+              <fieldset className="permission-lock" disabled>
+                {renderCurrentStep(loaded)}
+              </fieldset>
             )}
 
             {loaded.profile_complete !== false && !viewUnitKey ? (
