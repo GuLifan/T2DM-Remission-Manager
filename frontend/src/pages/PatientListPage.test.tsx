@@ -7,7 +7,7 @@
  *   - 2026-09-24  v1.0  浏览器走查回归：ST40/ST50/ST60 不得显示为常规管理
  */
 
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -88,6 +88,7 @@ describe('PatientListPage 当前环节', () => {
 
   it('按有效今天执行默认到期顺序，并支持搜索与表头双向排序', async () => {
     const user = userEvent.setup()
+    let effectiveDate = '2026-09-24'
     const rows = [
       ['未来患者', 'MRN-3', '2026-09-25', '2026-09-24T12:00:00'],
       ['无日期患者', 'MRN-4', null, '2026-09-24T13:00:00'],
@@ -115,10 +116,21 @@ describe('PatientListPage 当前环节', () => {
     }))
     vi.stubGlobal(
       'fetch',
-      vi.fn((input: RequestInfo | URL) => {
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input)
         if (url.includes('/api/domain/states')) return Promise.resolve(jsonOk([{ code: 'ST31', name: '血糖稳定阶段' }]))
-        if (url.includes('/api/test-context')) return Promise.resolve(jsonOk({ effective_date: '2026-09-24' }))
+        if (url.includes('/api/test-context')) {
+          if (init?.method === 'POST') {
+            effectiveDate = JSON.parse(String(init.body)).simulated_date
+          }
+          return Promise.resolve(jsonOk({
+            test_mode_enabled: true,
+            can_use_test_tools: true,
+            real_date: '2026-09-24',
+            effective_date: effectiveDate,
+            simulated_date: effectiveDate === '2026-09-24' ? null : effectiveDate,
+          }))
+        }
         if (url.endsWith('/api/patients')) return Promise.resolve(jsonOk(rows))
         return Promise.resolve(jsonOk({ departments: ['内分泌科'] }))
       }),
@@ -146,6 +158,14 @@ describe('PatientListPage 当前环节', () => {
     expect(screen.getAllByRole('row')).toHaveLength(2)
     expect(screen.getByText('未来患者')).toBeInTheDocument()
     await user.clear(screen.getByRole('searchbox'))
+
+    await user.clear(screen.getByLabelText('当前日期'))
+    await user.type(screen.getByLabelText('当前日期'), '2026/09/25')
+    await user.click(screen.getByRole('button', { name: '应用日期' }))
+    await waitFor(() => {
+      expect(screen.getByText('未来患者').closest('tr')).toHaveClass('patient-row--today')
+      expect(screen.getByText('今日患者').closest('tr')).toHaveClass('patient-row--overdue')
+    })
 
     const nameHeader = screen.getByRole('button', { name: /姓名/ })
     await user.click(nameHeader)

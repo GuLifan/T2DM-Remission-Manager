@@ -182,7 +182,7 @@ export default function PatientListPage({ currentUser, onOpenPatient, onLogout }
         context={`当前医生：${currentUser.display_name}`}
         actions={
           <>
-            <DateControl />
+            <DateControl onDateChanged={testContext.reload} />
             <button type="button" className="btn btn--text" onClick={onLogout}>
               退出登录
             </button>
