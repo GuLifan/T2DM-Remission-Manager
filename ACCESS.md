@@ -205,3 +205,4 @@
 | 103 | 2026-09-24 | 保存 M6 方案与 M6-A 本地提交 | `eb3ccd7`（M6 待审批方案）、`4a8fe7d`（M6-A 数据与导入） | require_escalated（Git 元数据写入） | 两笔提交均仅位于本地 `develop`，尚未推送；`main` 未合并、未修改。 |
 | 104 | 2026-09-24 | 按 Lifan 批准实施 M6-B 状态/检索接口与隐私审计 | `api/evidence.py`、`models/schemas.py`、`api/router.py`、`repository/evidence.py`、`tests/test_evidence_api.py` | workspace-write + require_escalated（uv 缓存/测试） | 状态与检索均需登录；2–100 字符、limit 1–50；四来源完整性门禁；普通医生可查全局依据；审计不保存原始查询与正文。后端 **176 passed**、ruff 全绿。 |
 | 105 | 2026-09-24 | 在开发库与密钥副本上执行真实 HTTP 接口验收并安全清理 | `data/runtime/m6b-api-qa`（已删除） | require_escalated（临时副本写入 + TestClient） | 状态 200 且 4/4 就绪；“停药时间”检索 200，命中锁定稿第九章；副本审计不含查询词。正式开发库未写本次测试审计；清理前验证目标位于项目 `data/runtime`。运行时出现 TestClient/httpx 依赖弃用提示，不影响本次接口结果。 |
+| 106 | 2026-09-24 | 保存 M6-B 本地实现提交 | `82e5b15`（M6-B 依据检索接口与审计） | require_escalated（Git 元数据写入） | 提交仅位于本地 `develop`，尚未推送；`main` 未合并、未修改。 |
