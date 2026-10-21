@@ -13,6 +13,8 @@ import { DateField, SelectField, TextField } from './Fields'
 import MedicationEditor from './MedicationEditor'
 import type { ClinicalContext, Examination, Medication } from './types'
 import { latestExaminations, medicationState, medicationStatus } from './types'
+import NoticeDialog from '../../components/NoticeDialog'
+import { locateIssue } from './issueFocus'
 
 interface Props { patient: Patient; onUpdated: () => void }
 const actualInterventions = ['结构化生活方式', '代谢手术', '其他']
@@ -23,6 +25,10 @@ export default function ClinicalPage({patient, onUpdated}: Props) {
   const lastOwnRevision = useRef<number | null>(null)
   const ownObjective = useRef(false)
   const clock = useAsync(signal => testSupportApi.context(signal), [patient.id])
+  const page = useRef<HTMLDivElement>(null)
+  // 提交结果属于病例/日期上下文，而不是会随修订号重建的草稿组件。
+  const [notice, setNotice] = useState<{message: string; open: boolean} | null>(null)
+  useEffect(() => {setNotice(null)}, [patient.id, clock.data?.effective_date])
   if (!data.data || !clock.data) return <>{data.error || clock.error ? <ErrorBanner message={data.error || clock.error} action={<button className="btn btn--outlined" onClick={() => {data.reload(); clock.reload()}}>重新加载资料</button>} /> : <LoadingBlock message="正在读取病例资料…" />}</>
   // 普通保存后等待病例状态与资料同时刷新，避免短暂展示旧方案并覆盖新输入。
   // 同次E4客观核对保持表单，以便继续独立确认。
@@ -31,17 +37,29 @@ export default function ClinicalPage({patient, onUpdated}: Props) {
     return <LoadingBlock message="记录已保存，正在更新本次病例资料…" />
   }
   const stale = patient.clinical_revision > data.data.patient_revision && patient.clinical_revision !== lastOwnRevision.current
-  return <>
+  return <div ref={page}>
     {stale ? <ErrorBanner message="病例资料已更新，当前未保存内容仍保留；请载入最新资料后重新核对。" action={<button type="button" className="btn btn--outlined" onClick={() => {lastOwnRevision.current = null; data.reload()}}>载入最新资料（放弃本页草稿）</button>} /> : null}
     <fieldset className="permission-lock" disabled={stale} style={{border: 0, padding: 0, margin: 0, minWidth: 0}}>
       <ClinicalForm key={`${patient.id}:${patient.current_state}:${data.data.patient_revision}`} patient={patient} context={data.data} today={clock.data.effective_date}
-        onCommitted={(objective, revision) => {lastOwnRevision.current = revision; ownObjective.current = objective; if (!objective) data.reload(); onUpdated()}} />
+        onCommitted={(objective, revision, response) => {
+          lastOwnRevision.current = revision; ownObjective.current = objective
+          if (response) {
+            // 后端结论通常已列出任务，只补充未包含的条目，避免弹窗重复整段原因。
+            const additional = response.tasks.filter(task => !response.output_text.includes(task))
+            setNotice(response.tasks.length ? {message: response.output_text + (additional.length ? `\n待处理：${additional.join('；')}` : ''), open:true} : null)
+          }
+          if (!objective) data.reload(); onUpdated()
+        }} />
     </fieldset>
-  </>
+    {notice && !notice.open ? <ErrorBanner message={notice.message} action={<button className="btn btn--text" onClick={() => setNotice({...notice,open:true})}>查看本次核对结果</button>} /> : null}
+    <NoticeDialog open={Boolean(notice?.open)} title="本次核对需要补充" message={notice?.message ?? ''}
+      onClose={() => setNotice(current => current ? {...current,open:false} : null)}
+      onLocate={() => {setNotice(current => current ? {...current,open:false} : null); locateIssue(page.current,notice?.message ?? '')}} />
+  </div>
 }
 
 function ClinicalForm({patient, context, today, onCommitted}: {
-  patient: Patient; context: ClinicalContext; today: string; onCommitted: (objective: boolean, revision: number) => void
+  patient: Patient; context: ClinicalContext; today: string; onCommitted: (objective: boolean, revision: number, response?: ClinicalV03Result) => void
 }) {
   const [v, setV] = useState(() => initialValues(patient, context, today))
   const set = (key: string) => (value: string) => setV(current => ({...current, [key]: value}))
@@ -57,6 +75,7 @@ function ClinicalForm({patient, context, today, onCommitted}: {
   const [constraints, setConstraints] = useState<string[]>(Array.isArray(context.carried.f023_constraints) ? context.carried.f023_constraints : [])
   const [medications, setMedications] = useState<Medication[]>(context.regimen?.data.medications ?? [])
   const [complete, setComplete] = useState(context.regimen?.data.complete ?? false)
+  const [noMedicationConfirmed, setNoMedicationConfirmed] = useState(false)
   const [reconciled, setReconciled] = useState(false)
   const inheritedDrug = medicationState(context.regimen?.data.medications ?? [], context.regimen?.data.complete ?? false)
   const inheritedFact = inheritedDrug === '待核实' ? null : inheritedDrug === '是'
@@ -67,6 +86,7 @@ function ClinicalForm({patient, context, today, onCommitted}: {
   const [judgeKey, setJudgeKey] = useState('')
   const [result, setResult] = useState<ClinicalV03Result | null>(null)
   const [error, setError] = useState('')
+  const [issueOpen, setIssueOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [confirmation, setConfirmation] = useState<{action: string; payload: Record<string, unknown>; title: string; review: string} | null>(null)
   const root = useRef<HTMLDivElement>(null)
@@ -89,7 +109,9 @@ function ClinicalForm({patient, context, today, onCommitted}: {
     examinations, examination_ids: examIds,
     intervention_other: interventions.includes('其他') ? v.otherIntervention || null : null,
   }
+  const removedIds = (context.regimen?.data.medications ?? []).filter(m => m.medication_id && !medications.some(n => n.medication_id === m.medication_id)).map(m => m.medication_id!)
   const regimen = {f016_medications: medications, regimen_source_id: context.regimen?.id ?? null,
+    removed_medication_ids: removedIds, no_current_medications_confirmed: noMedicationConfirmed,
     medication_reconciliation_confirmed: reconciled,
     medication_review_complete: complete, current_medication_confirmation: v.medicationConfirmation || null}
   const hasDrug = systemDrug === '待核实' ? null : systemDrug === '是'
@@ -99,11 +121,7 @@ function ClinicalForm({patient, context, today, onCommitted}: {
 
   function complain(message: string) {
     setError(message)
-    window.setTimeout(() => {
-      const invalid = root.current?.querySelector<HTMLElement>('[data-invalid-date="true"], input:invalid, [aria-invalid="true"]')
-      const banner = root.current?.querySelector<HTMLElement>('[role="alert"]')
-      ;(invalid ?? banner)?.scrollIntoView({block: 'center', behavior: 'smooth'}); invalid?.focus()
-    }, 0)
+    setIssueOpen(true)
   }
   async function run(action: string, payload: Record<string, unknown>) {
     setError('')
@@ -116,7 +134,10 @@ function ClinicalForm({patient, context, today, onCommitted}: {
       'medication-restart': ['restartReason'], 'remission-judge': ['diagnosisCredible', 'drugFree', 'hbaReliable'],
       'post-remission': ['medStatus', 'glucoseState'],
     }
-    if ((required[action] ?? []).some(key => !v[key])) {complain('请完成本次必选的事实核对与医生决定。'); return}
+    const missing = (required[action] ?? []).find(key => !v[key])
+    const fieldNames: Record<string,string> = {t2dm:'成人T2DM',acute:'急性不安全',typeDoubt:'分型疑点',contextEnough:'治疗背景充分',refused:'患者拒绝',conclusion:'医生结论',recovery:'复核结果',start:'医生决定',stage:'管理阶段',medicationConfirmation:'本次用药核对结论',restartReason:'重新用药原因',diagnosisCredible:'既往诊断可信',drugFree:'停药满3个月',hbaReliable:'HbA1c可解释',medStatus:'药物状态',glucoseState:'医生判定血糖状态'}
+    if (missing) {complain(`请完成本次必选的事实核对与医生决定：${fieldNames[missing] ?? missing}。`); return}
+    if (Array.isArray(payload.f016_medications) && removedIds.length && (!complete || (!medications.length && !noMedicationConfirmed))) {complain('移除药物后请重新完整核对当前方案；全部移除须明确确认本次当前无药，实际停药另行核对。'); return}
     if (v.years !== '' && v.months !== '' && Number(v.months) >= 12) {complain('填写病程年后，月只能为0—11；只填月时可填18个月。'); return}
     if ([v.years, v.months].some(n => n !== '' && (!Number.isInteger(Number(n)) || Number(n) < 0))) {complain('病程年、月请填写非负整数或留空。'); return}
     if (action === 'full-assessment' && v.start === '启动' && !constraints.length) {complain('请核对管理约束；没有时选择无。'); return}
@@ -134,7 +155,7 @@ function ClinicalForm({patient, context, today, onCommitted}: {
       setResult(response)
       revision.current = response.patient_revision
       if (response.objective_met) objectiveSignature.current = signature
-      onCommitted(Boolean(response.objective_met), response.patient_revision)
+      onCommitted(Boolean(response.objective_met), response.patient_revision, response)
     } catch (e) {complain(e instanceof ApiError ? e.message : '保存失败，请重试。')} finally {setSubmitting(false)}
   }
   useEffect(() => {
@@ -216,9 +237,12 @@ function ClinicalForm({patient, context, today, onCommitted}: {
       hbaReliable: '待复核', independent: '否', onTreatment: '待确认'}))
   }
   const examinationFields = <ExaminationEditor value={examinations} onChange={next => applyExaminations(next)}
+    judgeRange={patient.current_state === 'ST50' ? {earliest:patient.earliest_judge_date,today} : undefined}
     saved={context.examinations} selectedIds={examIds} onSelect={ids => {applyExaminations(examinations, ids); if (judgeKey.startsWith('saved:') && !ids.includes(Number(judgeKey.split(':')[1]))) setJudgeKey('')}} selectedJudge={judgeKey}
     onJudge={patient.current_state === 'ST50' ? key => {setJudgeKey(key); if (key.startsWith('saved:') && !examIds.includes(Number(key.split(':')[1]))) setExamIds(ids => [...ids, Number(key.split(':')[1])]); setV(current => ({...current, hbaReliable: '待复核', independent: '否'}))} : undefined} />
-  const medicationFields = <><MedicationEditor value={medications} onChange={next => {setMedications(next); setReconciled(false); set('medicationConfirmation')(''); set('medStatus')(medicationStatus(next, complete)); set('onTreatment')('待确认')}} />
+  const medicationFields = <><MedicationEditor value={medications} onChange={next => {setMedications(next); setComplete(false); setNoMedicationConfirmed(false); setReconciled(false); set('medicationConfirmation')(''); set('medStatus')(medicationStatus(next, false)); set('onTreatment')('待确认')}} />
+    {removedIds.length ? <p className="field-row__hint">本次移除{removedIds.length}张已保存药物卡；历史方案保留，停药事实和日期须另行核对。</p> : null}
+    {removedIds.length > 0 && !medications.length ? <label className="review-complete"><input type="checkbox" checked={noMedicationConfirmed} onChange={e => setNoMedicationConfirmed(e.target.checked)} />本次已核对当前无药（不代表已确认实际停药日期）</label> : null}
     <label className="review-complete"><input type="checkbox" checked={complete} onChange={e => {setComplete(e.target.checked); set('medicationConfirmation')(''); set('medStatus')(medicationStatus(medications, e.target.checked)); set('onTreatment')('待确认')}} />已完整核对当前方案，包括在用、停用和是否遗漏</label>
     <div className="medication-reconciliation">{medicationMismatch ? <><p role="alert">历史药物明细与既存汇总不一致。请核对当前方案、药物状态及用途；原记录保留。</p><label><input type="checkbox" checked={reconciled} onChange={e => setReconciled(e.target.checked)} />已核对历史药物不一致，本次以当前方案为准</label></> : null}<p><strong>系统提示：</strong>仍有降糖作用药物：{systemDrug}。空列表本身不代表无药。</p>
       {patient.current_state === 'ST20' ? <SelectField label="本次用药核对结论" value={v.medicationConfirmation} onChange={set('medicationConfirmation')} options={['是', '否', '待核实']} hint="请选择是否仍有降糖作用药物；本次必须由医生确认。" /> : null}</div></>
@@ -234,7 +258,6 @@ function ClinicalForm({patient, context, today, onCommitted}: {
   const anchorFields = <details className="card card--muted" open><summary>实际干预与观察时间</summary><CheckboxGroup legend="适用干预" values={anchors} onChange={setAnchors} options={actualInterventions.map(x => ({value: x, label: x}))} /><div className="form-grid">{anchors.includes('结构化生活方式') ? <DateField label="生活方式开始日" value={v.lifestyleDate} onChange={set('lifestyleDate')} /> : null}{anchors.includes('代谢手术') ? <DateField label="代谢手术日期" value={v.surgeryDate} onChange={set('surgeryDate')} /> : null}</div></details>
 
   return <div ref={root} className="clinical-workspace" aria-busy={submitting}>
-    {error ? <ErrorBanner message={error} /> : null}
     {result?.output_text ? <ResultBanner text={result.output_text} tone={result.objective_met ? 'success' : result.tasks.length ? 'warning' : 'neutral'} /> : null}
     {result?.tasks.length ? <div className="clinical-summary"><strong>待处理事项</strong><ul>{result.tasks.map(t => <li key={t}>{t}</li>)}</ul></div> : null}
     <details className="clinical-context" open><summary>已有资料 · 本次只需更新变化</summary><p>诊断依据：{String(context.carried.f013_diagnosis_basis ?? '未记录')}　管理约束：{Array.isArray(context.carried.f023_constraints) ? context.carried.f023_constraints.join('、') || '待核对' : '未记录'}</p><p>用药：{context.regimen ? `沿用上次方案（${context.regimen.clinical_date ?? '日期未记录'}），${context.regimen.data.medications.map(med => `${med.name} ${med.dose} · ${med.status}`).join('；') || (context.regimen.data.complete ? '已完整核对无药' : '待核实')}` : '尚无保存方案'}</p>{summary ? <p>检查：{summary}</p> : null}</details>
@@ -242,5 +265,7 @@ function ClinicalForm({patient, context, today, onCommitted}: {
     {['ST00', 'ST31', 'ST32', 'ST50', 'ST60'].includes(patient.current_state) ? <details className="section supplementary"><summary>重大变化后的返回处理</summary><p>仅新分型证据或重大变化时使用，保留医生原因与依据。</p><div className="form-grid">{patient.current_state === 'ST60' ? <SelectField label="后续方向" value={v.supplementChoice} onChange={set('supplementChoice')} options={['P04', 'P05A', 'P05B']} /> : null}<TextField label="医生决定原因" value={v.supplementReason} onChange={set('supplementReason')} /><TextField label="相关证据摘要" value={v.supplementEvidence} onChange={set('supplementEvidence')} />{patient.current_state === 'ST60' && v.supplementChoice.startsWith('P05') ? <SelectField label="获益用药原因" value={v.medStatus} onChange={set('medStatus')} options={['因器官获益', '因体重获益']} /> : null}</div><button type="button" className="btn btn--outlined" disabled={submitting} onClick={() => void submitSupplement()}>确认返回处理</button></details> : null}
     <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} confirmLabel={confirmation?.title ?? '保存本次记录'} cancelLabel="返回核对" onCancel={() => setConfirmation(null)} onConfirm={() => void execute()}
       description={`${patient.name} · ${today}\n${confirmation ? confirmationSummary(confirmation.action, confirmation.payload) : ''}\n${confirmation?.review ?? ''}\n保存后记录本次事实和医生决定，原历史记录保留。`} />
+    {error && !issueOpen ? <ErrorBanner message={error} /> : null}
+    <NoticeDialog open={issueOpen} title="请补全或核对本次资料" message={error} onClose={() => setIssueOpen(false)} onLocate={() => {setIssueOpen(false); locateIssue(root.current,error)}} />
   </div>
 }

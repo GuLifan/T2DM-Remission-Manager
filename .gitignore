@@ -16,6 +16,7 @@
 data/
 artifacts/
 backups/
+.updates/
 *.zip
 # Private source originals: configure outside Git, never expose as static files.
 resources/evidence/**

@@ -28,7 +28,7 @@ def test_health_ok(client) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
-    assert body["version"] == "0.4.2"
+    assert body["version"] == "0.4.3"
 
 
 def test_schema_created_by_migration(client, db_session) -> None:

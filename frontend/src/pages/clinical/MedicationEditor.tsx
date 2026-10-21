@@ -11,7 +11,7 @@ export const blankMedication = (name = ''): Medication => ({
 })
 
 /** 本项目独立目录；选中只生成草稿，不推断药效、剂量和临床目的。 */
-export default function MedicationEditor({value, onChange, allowRemoveSaved = false}: {
+export default function MedicationEditor({value, onChange, allowRemoveSaved = true}: {
   value: Medication[]; onChange: (v: Medication[]) => void; allowRemoveSaved?: boolean
 }) {
   const [catalog, setCatalog] = useState<MedicationCatalog | null>(null)
@@ -69,7 +69,8 @@ export default function MedicationEditor({value, onChange, allowRemoveSaved = fa
         {m.status === '已停用' ? <FieldRow label="实际停用日">{p => <DateInput {...p} value={m.stopped_on ?? ''} onChange={v => update(i, {stopped_on: v || null})} />}</FieldRow> : null}
       </div>
       <CheckboxGroup legend="用药目的（可多选）" values={purposesOf(m)} options={[...purposes, ...(purposesOf(m).includes('器官获益') ? ['器官获益'] : [])].map(v => ({value: v, label: v}))} onChange={v => update(i, {purposes: v, purpose: null})} />
-      {!m.medication_id || allowRemoveSaved ? <button type="button" className="btn btn--text" onClick={() => onChange(value.filter((_, index) => index !== i))}>{m.medication_id ? '移除误录药物（随补正留痕）' : '移除未保存药物'}</button> : <p className="field-row__hint">已保存药物：停用请修改状态和实际日期；误录请到“资料记录与补正”处理。</p>}
+      {!m.medication_id || allowRemoveSaved ? <button type="button" className="btn btn--text" onClick={() => onChange(value.filter((_, index) => index !== i))}>{m.medication_id ? '从本次方案移除' : '移除未保存药物'}</button> : null}
+      {m.medication_id ? <p className="field-row__hint">移除只影响本次方案，历史保留；实际停药仍须单独核对状态和日期。</p> : null}
     </details>)}
     <dialog ref={dialog} className="clinical-dialog medication-picker" onCancel={e => {e.preventDefault(); close()}} aria-label="选择常用药物">
       <div className="section-heading"><h2>选择常用药物</h2><button type="button" className="btn btn--text" onClick={close}>关闭</button></div>

@@ -1,7 +1,7 @@
 /**
  * 组件名称：DateControl.tsx
  * 所属层级：通用组件（components）
- * 功能说明：工作台显示只读日期；管理员管理区可设置或清除自己的业务日期。
+ * 功能说明：工作台左侧显示日期，管理员可直接打开窗口维护自己的业务日期。
  *
  * 安全说明：界面只控制入口可见性，真正的测试模式与账号权限由后端校验。
  *
@@ -10,14 +10,17 @@
  */
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 import { ApiError, notifyDateChanged } from '../api/client'
 import { testSupportApi } from '../api/endpoints'
 import { useAsync } from '../hooks/useAsync'
+import { useModalFocus } from '../hooks/useModalFocus'
 
 interface DateControlProps {
-  /** 只有管理员管理区显式开启编辑，临床工作台保持只读。 */
+  /** 入口可以在工作台开启，但后端can_manage_date仍决定真实权限。 */
   editable?: boolean
+  compact?: boolean
   /** 日期修改成功后通知调用方刷新 */
   onDateChanged?: () => void
 }
@@ -39,11 +42,13 @@ function parseDate(value: string): string | null {
 }
 
 /** 页头日期控件。 */
-export default function DateControl({ onDateChanged, editable = false }: DateControlProps) {
+export default function DateControl({ onDateChanged, editable = false, compact = false }: DateControlProps) {
   const context = useAsync((signal) => testSupportApi.context(signal), [])
   const [value, setValue] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const panel = useModalFocus(editOpen, () => {if (!saving) setEditOpen(false)})
 
   useEffect(() => {
     if (context.data) setValue(displayDate(context.data.effective_date))
@@ -60,6 +65,7 @@ export default function DateControl({ onDateChanged, editable = false }: DateCon
     setError('')
     try {
       await testSupportApi.setSimulatedDate(parsed)
+      setEditOpen(false)
       notifyDateChanged()
       context.reload()
       onDateChanged?.()
@@ -76,6 +82,7 @@ export default function DateControl({ onDateChanged, editable = false }: DateCon
     setError('')
     try {
       await testSupportApi.setSimulatedDate(null)
+      setEditOpen(false)
       notifyDateChanged()
       context.reload()
       onDateChanged?.()
@@ -96,7 +103,20 @@ export default function DateControl({ onDateChanged, editable = false }: DateCon
   const loaded = context.data
   return (
     <div className={`date-control${loaded.simulated_date ? ' date-control--simulated' : ''}`}>
-      {editable && loaded.can_manage_date ? (
+      {compact ? <>
+        <span className="date-control__readonly">当前日期：{displayDate(loaded.effective_date)}</span>
+        {editable && loaded.can_manage_date ? <button type="button" className="btn btn--outlined" onClick={() => {setValue(displayDate(loaded.effective_date)); setError(''); setEditOpen(true)}}>调整日期</button> : null}
+        {editOpen && editable && loaded.can_manage_date ? createPortal(<div className="confirm-dialog__scrim"><div ref={panel} className="confirm-dialog" role="dialog" aria-modal="true" aria-label="调整当前账号业务日期">
+          <h2>调整当前账号业务日期</h2><p>仅影响当前管理员；普通医生继续使用系统日期。其他页面的未保存内容须重新核对。</p>
+          <p>系统日期：{displayDate(loaded.real_date)}</p>
+          <label htmlFor="effective-date">业务日期</label><input className="input num" id="effective-date" inputMode="numeric" maxLength={10} value={value} onChange={e => setValue(e.target.value)} placeholder="yyyy/mm/dd" />
+          {error ? <p role="alert" className="date-control__error">{error}</p> : null}
+          <div className="confirm-dialog__actions"><button type="button" className="btn btn--text" disabled={saving} onClick={() => setEditOpen(false)}>取消</button>
+            {loaded.simulated_date ? <button type="button" className="btn btn--outlined" disabled={saving} onClick={() => void restoreRealDate()}>使用系统日期</button> : null}
+            <button type="button" className="btn btn--primary" disabled={saving} onClick={() => void applyDate()}>{saving ? '正在保存…' : '应用日期'}</button>
+          </div>
+        </div></div>, document.body) : null}
+      </> : editable && loaded.can_manage_date ? (
         <>
           <span>系统日期：{displayDate(loaded.real_date)}</span>
           <label className="date-control__label" htmlFor="effective-date">
@@ -123,7 +143,7 @@ export default function DateControl({ onDateChanged, editable = false }: DateCon
       ) : (
         <span className="date-control__readonly">当前日期：{displayDate(loaded.effective_date)}</span>
       )}
-      {error ? <span className="date-control__error" role="alert">{error}</span> : null}
+      {error && !compact ? <span className="date-control__error" role="alert">{error}</span> : null}
     </div>
   )
 }

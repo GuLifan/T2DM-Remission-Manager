@@ -6,15 +6,22 @@ export const examinationSummary = (exams: Examination[]) => exams.map(e => `${e.
 export const blankExamination = (): Examination => ({kind: 'HbA1c', value: null, unit: '%', source: '本院检查', test_date: null, report_end_date: null, reliability: '可靠', independently_reviewed: false})
 
 /** 多检查编辑与已保存资料引用分开；摘要直接从同一组资料生成。 */
-export default function ExaminationEditor({value, onChange, saved, selectedIds, onSelect, selectedJudge, onJudge}: {
+export default function ExaminationEditor({value, onChange, saved, selectedIds, onSelect, selectedJudge, onJudge, judgeRange}: {
   value: Examination[]; onChange: (v: Examination[]) => void; saved: DataRecord<Examination>[];
   selectedIds: number[]; onSelect: (v: number[]) => void; selectedJudge?: string; onJudge?: (v: string) => void
+  judgeRange?: {earliest: string | null; today: string}
 }) {
   function update(index: number, patch: Partial<Examination>) { onChange(value.map((e, i) => i === index ? {...e, ...patch} : e)) }
   const eligible = ['HbA1c', 'FPG', 'CGM估算HbA1c']
-  function selector(key: string, e: Examination) { return onJudge && eligible.includes(e.kind) ? <label className="judge-choice"><input type="radio" name="judge-examination" value={key} checked={selectedJudge === key} onChange={() => onJudge(key)} />作为本次缓解判定检查</label> : null }
+  function selector(key: string, e: Examination) {
+    if (!onJudge || !eligible.includes(e.kind)) return null
+    const day = e.kind === 'CGM估算HbA1c' ? e.report_end_date : e.test_date
+    const reason = !day ? '检测日期尚未填写。' : !judgeRange?.earliest ? '最早可判定日尚未明确，请核对实际停药和适用干预日期。' : day < judgeRange.earliest ? `检测日${day}早于本轮最早可判定日${judgeRange.earliest}；可保留为历史资料，但不能用于本轮缓解确认。` : day > judgeRange.today ? `检测日${day}晚于当前业务日${judgeRange.today}，不能采用未来检查事实。` : `检测日${day}处于本轮日期范围内，仍须核对指标、可靠性及药物事实。`
+    return <div><label className="judge-choice"><input type="radio" name="judge-examination" value={key} checked={selectedJudge === key} onChange={() => onJudge(key)} />作为本次缓解判定检查</label>{selectedJudge === key ? <p className="field-row__hint">{reason}</p> : null}</div>
+  }
   return <section className="examination-section" aria-label="检查资料">
     <div className="section-heading"><h3>检查资料</h3><button type="button" className="btn btn--outlined" onClick={() => onChange([...value, blankExamination()])}>添加检查</button></div>
+    {onJudge && judgeRange ? <p className="clinical-summary">{judgeRange.earliest ? `本轮已记录的判定检查日期范围：${judgeRange.earliest}—${judgeRange.today}（含起止日）。修改实际干预日期后，以本次客观核对结果为准。` : '本轮最早可判定日尚未明确，请核对实际停药和适用干预日期。'} 既往检查仍可保存；本轮能否采用须另行核对。</p> : null}
     {saved.length ? <details className="saved-exams" open><summary>已有检查（保留原检测日期）</summary>{saved.map(r => <div className="saved-exam" key={r.id}><label><input type="checkbox" checked={selectedIds.includes(r.id)} onChange={e => onSelect(e.target.checked ? [...selectedIds, r.id] : selectedIds.filter(id => id !== r.id))} />{examinationSummary([r.data])}</label>{selector(`saved:${r.id}`, r.data)}</div>)}</details> : null}
     {value.map((exam, i) => <div className="card card--muted examination-card" key={i}>
       <div className="form-grid">

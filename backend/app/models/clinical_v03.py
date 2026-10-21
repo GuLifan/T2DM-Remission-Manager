@@ -31,6 +31,16 @@ class V03Request(BaseModel):
     medication_reconciliation_confirmed: StrictBool = False
     medication_review_complete: StrictBool = False
     current_medication_confirmation: Literal["是", "否", "待核实"] | None = None
+    # 当前方案移除是本次事实核对，不是删除历史或推断实际停药。
+    removed_medication_ids: list[str] = Field(default_factory=list, max_length=200)
+    no_current_medications_confirmed: StrictBool = False
+
+    @field_validator("removed_medication_ids")
+    @classmethod
+    def validate_removed_medication_ids(cls, value):
+        if len(value) != len(set(value)) or any(not item or len(item) > 128 for item in value):
+            raise ValueError("移除药物标识必须有效且不得重复")
+        return value
 
 
 class ClinicalExamination(BaseModel):

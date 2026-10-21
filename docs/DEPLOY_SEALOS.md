@@ -1,37 +1,44 @@
-# Sealos Cloud / Devbox deployment — 0.4.2
+# Sealos deployment / Sealos 部署 — 0.4.3
 
-This is the public testing build for simulated information, deployed in a Linux container runtime similar to Docker. Use a Node.js 22 Devbox, one instance and one Uvicorn worker. The following commands are for a **fresh installation**. For an existing database use the upgrade section instead; do not overwrite `.env`, keys or data.
+Public testing in a Linux container environment similar to Docker; simulated information only. Use one instance, one Uvicorn worker and SQLite. No Docker image is provided.
 
-## 1. Install the local-user tools
+这是在类似 Docker 的 Linux 容器中运行的公网测试版本，仅使用模拟资料。采用单实例、单 Uvicorn worker 和 SQLite，不提供 Docker 镜像。
 
-Open the Devbox remote terminal. Check Node.js is at least 22.12:
+## Existing 0.4.2 installation / 已有0.4.2环境
+
+Use the [0.4.3 patch guide](UPDATE_0.4.3.md) for the officially supplied 0.4.2 Sealos package. It includes prebuilt pages, checks the base files, backs up private data and preserves `.env`, keys and evidence. Do not run administrator initialization again.
+
+此前通过官方0.4.2 Sealos部署包安装的环境，请使用[0.4.3补丁指南](UPDATE_0.4.3.md)。补丁带编译页面，检查基线并备份私有资料，保留`.env`、密钥和依据原件；不要重复初始化管理员。
+
+## Fresh Node.js 22 Devbox / 全新Node.js 22 Devbox
+
+1. Create a Node.js 22 Devbox; verify Node is at least 22.12. Install uv in the Devbox user's tool directory and Python 3.13. Project dependencies stay in `backend/.venv`.
+
+1. 创建Node.js 22 Devbox，确认Node至少22.12。将uv安装在Devbox用户工具目录，并安装Python3.13；项目依赖只安装在`backend/.venv`。
 
 ```bash
 node --version
 curl -LsSf https://astral.sh/uv/install.sh -o /tmp/etmms-uv-install.sh
 sh /tmp/etmms-uv-install.sh
 export PATH="$HOME/.local/bin:$PATH"
-uv --version
 uv python install 3.13
 uv python find 3.13
 ```
 
-The installer goes into the Devbox user's tool directories. Project Python dependencies go into `backend/.venv`; do not install application dependencies into a global Python. In a new terminal repeat the PATH export if uv is not on PATH.
+2. Obtain the development release from `develop` (the owner has not promoted 0.4.3 to main). Record the commit SHA. Downloading a source ZIP is also possible; dependencies and build output are not included.
 
-## 2. Obtain the source
+2. 从`develop`获取此次开发版本（0.4.3未获授权发布到main），记录提交SHA。也可使用源码ZIP，但不含依赖和构建产物。
 
 ```bash
 cd /home/devbox/project
-git clone --branch main https://github.com/GuLifan/T2DM-Remission-Manager.git
+git clone --branch develop --single-branch https://github.com/GuLifan/T2DM-Remission-Manager.git
 cd T2DM-Remission-Manager
 git rev-parse HEAD
 ```
 
-Record the commit SHA for reproducibility. Source-download ZIPs are also usable, but do not include dependencies or built frontend files. No default administrator password exists.
+3. Choose an actual persistent directory outside the source tree. The path below is an example: verify its Sealos mount, rather than assuming it survives recreation. Copy the example configuration and edit the real `.env` privately.
 
-## 3. Configure an independent persistent data directory
-
-Confirm the Sealos storage/mount first. `/home/devbox/etmms-v04-data` below is an **example**, not a promise of platform persistence. Keep it outside the source checkout and do not use a public static directory.
+3. 在源码之外选择真实持久化目录。下方路径只是示例，须核实Sealos挂载，不能假定重建后仍在。复制配置样例后，私下编辑真实`.env`。
 
 ```bash
 mkdir -p /home/devbox/etmms-v04-data
@@ -40,7 +47,7 @@ cp backend/.env.example backend/.env
 chmod 600 backend/.env
 ```
 
-Edit `backend/.env` so it contains:
+Configuration / 配置：
 
 ```dotenv
 ETMMS_DEMO_MODE=true
@@ -49,44 +56,37 @@ ETMMS_SESSION_HOURS=8
 ETMMS_LOG_LEVEL=INFO
 ```
 
-Do not commit this real file. The application creates its own random signing key in the data directory; preserve it with backups. Keep the same data path and key across service restarts.
+Keep the randomly created signing key with the database and backups. Never copy a developer's database, key, `.venv` or `node_modules` into a fresh installation.
 
-## 4. Install dependencies and build
+随机生成的签名密钥须与数据库和备份一起保存。新装时不要导入开发者数据库、密钥、Windows虚拟环境或依赖目录。
 
-From the repository root:
+4. Install from lockfiles, build the frontend, then create the **first** administrator interactively. Choose your own unique password of at least 12 characters. The patient list starts empty.
+
+4. 按锁文件安装并编译前端，再交互创建**首个**管理员。使用自己设置的至少12位独立密码；患者列表初始为空。
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 export UV_PYTHON=3.13
 bash scripts/setup.sh
-backend/.venv/bin/python --version
-```
-
-This uses `uv sync --frozen --no-dev` and `npm ci`, then builds the frontend. Do not copy a Windows `.venv` or `node_modules` to Linux.
-
-## 5. Initialize the first administrator — fresh installs only
-
-```bash
 cd backend
 uv run --no-sync python -m app.demo_cli init-admin
 cd ..
 ```
 
-Enter your own login name and a unique password of at least 12 characters at the prompts. Nothing is seeded into the patient list. An existing administrator must not be reinitialized.
+5. For complete evidence search, privately configure the four approved originals following [EVIDENCE.md](EVIDENCE.md). Core workflow can start without them; do not claim an empty evidence index is complete.
 
-## 6. Privately configure evidence, if authorized
-
-Follow [EVIDENCE.md](EVIDENCE.md). The Git checkout contains only the manifest. After placing all four matching originals at their specified paths, run:
+5. 若需完整依据检索，按[EVIDENCE.md](EVIDENCE.md)私下配置四份已批准原件。核心流程可先启动，但空依据索引不等于已完整配置。
 
 ```bash
+# Only after private resources are configured / 仅在原件配置完成后
 cd backend
 uv run --no-sync python -m app.evidence_cli
 cd ..
 ```
 
-The expected results are 13, 124 and 15 PDF pages plus 15 Markdown sections. A second import reports `skipped`. Missing/mismatched files must be resolved with the operator; never bypass their hashes. Without these resources the clinical workflow remains available but evidence search is not complete. Existing upgraded databases may already contain indexes; original downloads additionally require the files.
+6. Start and expose **8088** via Sealos public HTTPS. Do not expose a Vite dev server or static aliases to data/resources. `start.sh` runs in the background; `entrypoint.sh` is the alternative foreground entrypoint. Do not run both at once.
 
-## 7. Start and expose port 8088
+6. 启动，并在Sealos网络设置将容器**8088**端口开放为HTTPS公网访问。不要公开Vite开发服务器或数据/原件静态目录。`start.sh`后台运行；`entrypoint.sh`是另一种前台入口，两者不要同时运行。
 
 ```bash
 bash start.sh
@@ -94,25 +94,20 @@ bash start.sh status
 curl --fail http://127.0.0.1:8088/api/health
 ```
 
-Expected JSON: `{"status":"ok","version":"0.4.2"}`. In Sealos network settings expose **8088**, enable public HTTPS access, and open the generated URL. Do not map 8080 unless explicitly changing the service port. Do not expose the Vite development server, data directory or resource directory.
+Expected / 预期：`{"status":"ok","version":"0.4.3"}`.
 
-For Devbox background operation keep `start.sh`. Closing the terminal should leave its process running; verify in the actual environment. After Devbox restarts run it again. To stop use `bash start.sh stop`. To inspect logs use the log path shown by its status output; do not publish logs.
+The background script defaults to 8088 (`ETMMS_START_PORT` override); the foreground script uses `${PORT:-8088}`. After a Devbox restart run `bash start.sh` again; no boot task is installed. Test terminal-close behavior, persistence and backups in the actual environment.
 
-For a managed container process use `bash entrypoint.sh` in the **foreground** instead. It uses `${PORT:-8088}`; `start.sh` uses `ETMMS_START_PORT` with default 8088. Do not start both launch modes together. Persistent volume configuration remains the operator's responsibility.
+后台脚本默认8088，可用`ETMMS_START_PORT`覆盖；前台脚本使用`${PORT:-8088}`。Devbox重启后再执行一次`bash start.sh`，没有配置开机自动任务。请现场验证关闭终端、重启持久化和备份。
 
-## 8. Invite doctors and verify
+7. Log in, issue an invitation under **账号管理**, and register a doctor in another browser profile. Confirm empty starting lists, ownership isolation and doctor read-only dates. Administrator date controls are visible at the upper-left of the list/case workspace and remain available in account management.
 
-Log in as the administrator, open **账号管理**, and create an invitation. Save its plaintext when shown; it is not recoverable later. Open another browser profile to register a doctor. Both accounts start without patients. Confirm the doctor cannot edit dates and cannot read another user's cases. Administrator date control is under **账号管理 → 日期维护**, not the read-only clinical header.
+7. 登录管理员，到**账号管理**发放邀请码，在另一浏览器配置中注册医生。确认初始列表为空、病例隔离、医生日期只读。管理员在列表/病例工作台左上方可直接调整日期，账号管理中也保留入口。
 
-## Existing installation upgrade and rollback
+## Upgrading a Git checkout / Git源码部署升级
 
-1. Record the existing code version, configured data directory and key location. Stop service using the old installation's `start.sh stop`; confirm port 8088 is no longer serving it.
-2. Back up `.env` and the **entire configured data directory**, including signing key and database sidecars, to a private directory outside both old and new code trees. With service stopped, use the old backend's `python -m app.demo_cli backup --output <new-backup.db>` for an integrity-checked SQLite backup. Do not overwrite an earlier backup or publish these files.
-3. Preserve the old source directory for rollback. Put the new source in a separate directory, restore the old `backend/.env`, and keep exactly the existing external data path and signing key. Run setup. **Do not run init-admin, delete tables or upload a local development database.**
-4. Privately restore the four evidence files if using that feature, then run `app.evidence_cli`. Database migrations are tracked at startup/import; version 0.4.2 retains head `d04data001`.
-5. Start the new code and verify health 0.4.2. Before inviting new testers, confirm existing users, current/archived cases and histories remain available. Force-refresh the browser and check both roles.
-6. If rollback is needed, stop the new process first and preserve its current database for investigation. Restore the matching old code, `.env`, backed-up database and signing key together. Never run older code against an uncertain partially upgraded database or delete migration records to hide errors.
+Stop the old service and make an integrity-checked SQLite backup plus private copies of `.env` and the signing key. Preserve the old checkout. Put the requested new commit in a separate directory, retain the existing external data directory/key, run setup and start the new source. Do not blindly pull/reset a checkout that has received a file patch or manual modifications. Never reinitialize the administrator or delete migration records.
 
-These instructions do not establish that a chosen mount survives Devbox deletion/recreation. Validate restart persistence and backups in your actual Sealos environment.
+先停旧服务，完成SQLite一致性备份，并私下备份`.env`和签名密钥，保留旧工程。把指定新提交放在另一目录，沿用外部数据目录和密钥，准备依赖后启动。收到文件补丁或有手工修改的Git工作树，不要直接pull/reset覆盖。不要重新初始化管理员或删除迁移记录。
 
-References: [uv installation](https://docs.astral.sh/uv/getting-started/installation/), [uv Python management](https://docs.astral.sh/uv/guides/install-python/), [Sealos Devbox](https://sealos.io/docs/guides/devbox/), [Sealos deployment](https://sealos.io/docs/guides/devbox/deploy/).
+Reference / 参考：[uv installation](https://docs.astral.sh/uv/getting-started/installation/), [Python management](https://docs.astral.sh/uv/guides/install-python/), [Sealos Devbox](https://sealos.io/docs/guides/devbox/).

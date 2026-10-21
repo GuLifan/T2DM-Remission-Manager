@@ -1,6 +1,6 @@
 [project]
 name = "etmms-backend"
-version = "0.4.2"
+version = "0.4.3"
 description = "早期2型糖尿病缓解管理软件（ETMMS）后端：临床流程决策支持"
 readme = "README.md"
 # 版本下限 3.13：3.13 与 3.14 均可（打包兼容性在 M1 实测后锁定，见 _SPEC/08 M1）

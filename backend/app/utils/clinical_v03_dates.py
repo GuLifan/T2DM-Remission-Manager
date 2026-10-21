@@ -40,7 +40,11 @@ def compute_earliest(
 
 def require_nonfuture(value: date, today: date, label: str) -> None:
     if value > today:
-        raise BusinessRuleError(f"{label}不能晚于本次记录日。", code="FUTURE_CLINICAL_DATE")
+        raise BusinessRuleError(
+            f"{label}不能晚于本次记录日：所填日期{value.isoformat()}，当前业务日期{today.isoformat()}。"
+            + ("既往及当天检查可以录入。" if "检查" in label or "检测" in label else ""),
+            code="FUTURE_CLINICAL_DATE",
+        )
 
 
 def examination_date_qualified(exam: ExaminationRecord, earliest: date | None, today: date) -> bool:

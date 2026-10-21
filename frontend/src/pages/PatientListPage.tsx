@@ -50,8 +50,7 @@ export default function PatientListPage({currentUser, onOpenPatient, onLogout}: 
     }))
   }
   return <div className="page">
-    <PageHeader title="患者工作台" context={`当前账号：${currentUser.display_name}`} actions={<>
-      <DateControl onDateChanged={context.reload} />
+    <PageHeader title="患者工作台" context={`当前账号：${currentUser.display_name}`} dateControl={<DateControl compact editable={currentUser.role === 'admin'} onDateChanged={context.reload} />} actions={<>
       {currentUser.role === 'admin' ? <a className="btn btn--text" href="/admin">账号管理</a> : null}
       <button className="btn btn--text" onClick={onLogout}>退出登录</button>
     </>} />

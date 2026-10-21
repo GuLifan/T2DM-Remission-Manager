@@ -1,5 +1,7 @@
-# ETMMS backend 0.4.2
+# ETMMS backend / 后端 0.4.3
 
-FastAPI + SQLAlchemy + SQLite. Use Python 3.13 with uv and this directory's `.venv`; install from `uv.lock`. Runtime deployment uses one Uvicorn worker.
+FastAPI + SQLAlchemy + SQLite, Python 3.13. Use uv and the project-local `.venv`, install from `uv.lock`, and run one Uvicorn worker. Configure `.env` before starting. Existing upgrades preserve data/key and do not run `init-admin` again.
 
-See [Sealos setup](../docs/DEPLOY_SEALOS.md), [specifications](../_SPEC/README.md), [private evidence](../docs/EVIDENCE.md), and [verification](../docs/VALIDATION.md). Configure `.env` before starting; existing installations must preserve their data and signing key and must not reinitialize the administrator.
+使用 FastAPI、SQLAlchemy、SQLite 和 Python 3.13。通过 uv 与项目内 `.venv` 按 `uv.lock` 安装，运行单 Uvicorn worker。启动前配置 `.env`；已有环境升级保留数据和密钥，不重复执行 `init-admin`。
+
+[Sealos setup / 安装](../docs/DEPLOY_SEALOS.md) · [Patch / 补丁](../docs/UPDATE_0.4.3.md) · [Specifications / 约束](../_SPEC/README.md) · [Evidence / 依据](../docs/EVIDENCE.md)

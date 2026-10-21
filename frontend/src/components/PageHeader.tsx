@@ -16,15 +16,17 @@ interface PageHeaderProps {
   context?: string
   /** 右侧全局入口 */
   actions?: React.ReactNode
+  dateControl?: React.ReactNode
 }
 
 /** 页头。 */
-export default function PageHeader({ title, context, actions }: PageHeaderProps) {
+export default function PageHeader({ title, context, actions, dateControl }: PageHeaderProps) {
   return (
     <header className="page-header">
       <div className="page-header__titles">
         <span className="page-header__title">{title}</span>
         {context ? <span className="page-header__context">{context}</span> : null}
+        {dateControl ? <div className="page-header__date">{dateControl}</div> : null}
       </div>
       {actions ? <div className="page-header__actions">{actions}</div> : null}
     </header>

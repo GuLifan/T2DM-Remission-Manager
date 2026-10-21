@@ -9,6 +9,8 @@ export function confirmationSummary(action: string, p: Record<string, unknown>):
   for (const [key,label] of fields) add(label,p[key])
   if (p.transition_id) add('返回方向', ({P01:'重新预评估',P02:'返回完整评估',P03A:'返回完整评估',P03B:'返回完整评估',P04:'确认缓解终止，返回完整评估',P05A:'获益用药，进入血糖稳定',P05B:'获益用药，进入缓解诱导'} as Record<string,string>)[String(p.transition_id)])
   add('新增体重（kg）',p.f018_weight)
+  if (Array.isArray(p.removed_medication_ids) && p.removed_medication_ids.length) add('从本次方案移除（历史保留，不代表实际停药）', `${p.removed_medication_ids.length}项`)
+  if (p.no_current_medications_confirmed) add('本次明确确认', '当前无药，停药事实另行核对')
   if (p.measurement_id) add('沿用测量记录',p.measurement_id)
   if (Array.isArray(p.f016_medications)) add('当前药物',p.f016_medications.length ? p.f016_medications.map(m => `${m.name}（${m.status}；${m.dose}）`).join('；') : p.medication_review_complete ? '已完整核对无药' : '尚待核对')
   if (p.anchors && typeof p.anchors === 'object') {

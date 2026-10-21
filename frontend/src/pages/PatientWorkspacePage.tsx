@@ -205,9 +205,9 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
         <PageHeader
           title={viewUnitKey ? `${navItems.find((item) => item.key === viewUnitKey)?.label ?? ''}（回看）` : currentStateName}
           context={`${loaded.name} · ${loaded.gender} · 病例编号 ${patientNumber(loaded)}${loaded.department ? ` · ${loaded.department}` : ''} · 责任医生 ${loaded.owner_display_name ?? '未指定'} · 当前账号 ${currentUser.display_name}`}
+          dateControl={<DateControl compact editable={currentUser.role === 'admin'} onDateChanged={onBack} />}
           actions={
             <>
-              <DateControl onDateChanged={onBack} />
 
               <StatusBadge tone="neutral">{currentStateName}</StatusBadge>
               <button type="button" className="btn btn--text" onClick={() => setEvidenceOpen(true)}>

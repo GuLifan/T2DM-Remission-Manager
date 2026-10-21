@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3 — 2026-10-21
+
+Allow explicitly reviewed medication removal without deleting history or inferring discontinuation; restore upper-left administrator date controls; distinguish examination recording from E4 date eligibility; preserve centered actionable notices across form revisions. Supply a checksum-verified 0.4.2 file patch with private backup and code-only rollback. Clinical thresholds, ownership, one-worker topology and schema head are unchanged.
+
+允许明确核对后从本次方案移除药物，保留历史且不推断停药；恢复管理员左上日期入口；区分检查录入与E4日期资格；居中结果跨表单刷新保留。提供0.4.2文件补丁、校验、私有备份及代码回退。临床阈值、归属、单worker及数据库head不变。
+
 ## 0.4.2 — 2026-10-21
 
 Redeveloped public testing version for Sealos Cloud and a Linux container environment similar to Docker. Replaces the previous branch content while retaining Git history.

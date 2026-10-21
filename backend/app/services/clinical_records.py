@@ -176,8 +176,22 @@ def prepare(db: Session, patient: Patient, user: User, payload, today: date):
                 m["medication_id"] = f"legacy-{old.id}-{i}"
         old_ids = {m.get("medication_id") for m in old_meds if m.get("medication_id")}
         incoming_ids = {m.medication_id for m in meds if m.medication_id}
-        if not old_ids.issubset(incoming_ids):
-            fail("不能直接移除已保存药物；停用请记录状态和日期，误录请使用资料补正")
+        removed_ids = old_ids - incoming_ids
+        if set(payload.removed_medication_ids) != removed_ids:
+            fail("本次移除药物与来源方案不一致，请重新核对移除项目")
+        if incoming_ids - old_ids:
+            fail("药物卡标识不属于当前来源方案，请重新添加独立药物卡")
+        if removed_ids and not payload.medication_review_complete:
+            fail("移除药物后请重新完整核对当前方案")
+        if removed_ids and not meds and not payload.no_current_medications_confirmed:
+            fail("全部移除后，请明确确认本次当前无药；移除不代表已经实际停药")
+        if payload.no_current_medications_confirmed and meds:
+            fail("当前仍有药物卡，不能确认本次当前无药")
+        if getattr(payload, "f057_actual_stop", None) == "已实际停用" and any(
+            m.get("medication_id") in removed_ids and m.get("has_glucose_lowering_effect") is True
+            for m in old_meds
+        ):
+            fail("本次确认实际全部停药时，请保留降糖药卡并逐药核对停用状态和日期；之后可从当前方案移除")
         if len(incoming_ids) != sum(bool(m.medication_id) for m in meds):
             fail("药物卡标识重复，请重新添加独立药物卡")
         for m in meds:

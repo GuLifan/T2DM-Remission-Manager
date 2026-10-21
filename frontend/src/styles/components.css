@@ -875,3 +875,18 @@
   color: var(--etmms-on-surface-variant);
   font-size: var(--etmms-text-caption);
 }
+
+/* 0.4.3：左侧日期和可访问提示；长中文结果不得撑出窄视口。 */
+.page-header__date { margin-top: var(--etmms-space-1); }
+.page-header__date .date-control { padding-left: 0; }
+.notice-dialog__scrim { z-index: 40; }
+.notice-dialog__message { white-space: pre-line; overflow-wrap: anywhere; }
+.confirm-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; box-sizing: border-box; overflow-wrap: anywhere; }
+.confirm-dialog__actions { flex-wrap: wrap; }
+.result-banner, .result-banner__text, .clinical-summary { min-width: 0; max-width: 100%; overflow-wrap: anywhere; box-sizing: border-box; }
+@media (max-width: 600px) {
+  .page-header { align-items: flex-start; flex-wrap: wrap; }
+  .page-header__titles { flex: 1 1 100%; }
+  .page-header__date .date-control { justify-content: flex-start; }
+  .confirm-dialog { width: calc(100vw - 24px); padding: var(--etmms-space-3); }
+}

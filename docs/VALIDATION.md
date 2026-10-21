@@ -1,4 +1,24 @@
-# Validation scope — 0.4.2 public source
+# Validation scope — 0.4.3 public source / 验证范围
+
+## 0.4.3 repair verification — 2026-10-21 / 修订验证
+
+The complete local suite passed **452 backend tests** (two existing upstream deprecation warnings) and **61 frontend tests across 19 files**. Frontend lint and the production build passed. These counts include the new cases; they are not added to earlier runs. The database schema remains `d04data001`.
+
+本轮完整本地套件通过**452项后端测试**（两条既有上游弃用提示）和**19个文件、61项前端测试**，前端lint和生产构建通过。数字已经包含新增用例，不与历史次数累加。数据库结构仍为`d04data001`。
+
+New coverage includes declared partial/all medication removal, explicit empty-plan confirmation, historical preservation, invalid/foreign IDs, review and source-revision guards, no automatic stop facts, past/today/future examinations, exact E4 interval boundaries, centered notices that survive revision refresh, draft/focus preservation and role-dependent date controls. Fourteen updater cases cover preflight, protected paths, tampered payloads, modified/missing base files, optional new public documents, active-service refusal, replacement failure, repeat application and rollback retaining later database records.
+
+新增覆盖药物部分/全部移除声明、空方案显式确认、历史保留、无效/其他来源ID、重新核对及版本门禁、不自动生成停药事实，过去/当天/未来检查、E4确切区间边界、刷新后保留的居中提示、草稿/焦点保留和按角色显示日期入口。补丁工具14项用例覆盖预检、受保护路径、载荷篡改、基线修改/缺失、新增公开说明的可选基线、监听中拒绝、替换异常、重复应用及回退保留后续数据库记录。
+
+An actual local browser walkthrough used separate disposable administrator/doctor accounts and isolated synthetic cases, not the public database. It verified date set/restore and old-draft blocking, independent doctor/system dates, saved partial/all card removal, unchanged active-management state after emptying a plan, E4 selected-date explanations and post-save notices, and a 375-pixel date dialog. Browser automation observations complement the regression suite; they do not establish that every browser or device has been covered.
+
+实际本地浏览器走查使用独立管理员/医生账号及隔离模拟病例，未操作公网数据库。核对日期调整/恢复和旧草稿阻断、医生系统日期隔离、已保存卡片部分/全部移除、清空方案后仍处主动管理、E4所选日期说明和保存后提示，以及375像素日期弹窗。浏览器走查补充自动回归，不代表覆盖所有浏览器和设备。
+
+This is local engineering verification. Sealos installation, public gateway behavior, cloud persistence/restart and clinician acceptance remain target-environment checks. Historical 0.4.2 records below remain frozen context.
+
+以上是本地工程验证。Sealos安装、公网网关、云端持久化/重启及临床医师验收仍需目标环境核对。以下0.4.2记录作为冻结历史保留。
+
+## Historical 0.4.2 scope
 
 The 0.4.2 engineering repair run completed 422 backend tests, 56 frontend tests and a separate local HTTP logic suite with 385 assertions covering 58 transitions. Those historical engineering results are not additive, not a cloud capacity benchmark and not clinician acceptance.
 

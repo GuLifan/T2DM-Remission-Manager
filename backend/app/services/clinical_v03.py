@@ -279,7 +279,11 @@ def evaluate_judge(ctx: Context, payload: RemissionJudgeV03, today: date) -> Dec
            for m in payload.f016_medications):
         tasks.append("药物记录与无降糖作用药物的结论不一致，请复核")
     if exam is None or not examination_date_qualified(exam, earliest, today):
-        tasks.append("补齐日期在最早判定日至本次判定日内的检查")
+        if earliest:
+            selected_date = exam.effective_date.isoformat() if exam and exam.effective_date else "未填写"
+            tasks.append(f"本轮判定可采用{earliest.isoformat()}至{today.isoformat()}的检查；所选日期{selected_date}，请重新选择范围内检查。较早检查可保留为历史资料")
+        else:
+            tasks.append("最早可判定日尚未明确，请先核对实际停药和适用干预日期，再选择本轮判定检查")
     if exam is None or exam.reliability != "可靠":
         tasks.append("核对本次检查可靠性")
     if payload.f043_hba1c_reliable == "是":
