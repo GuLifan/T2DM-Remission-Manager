@@ -9,3 +9,5 @@
 The machine-readable clinical contract is `backend/app/domain/clinical_v03_contract.json`. It retains 51 original transitions and 7 approved supplemental transitions. Original stakeholder documents, historical approval conversations and local reports referenced in older specification prose are private project records, not repository dependencies. Publication boundaries above override earlier packaging language: source originals belong only in authorized private deployments, never in Git.
 
 Change the applicable specifications before implementation. Do not infer new clinical decisions from code or change locked thresholds without an approved source.
+
+Approved 0.4.3 overrides: [usability repairs](14_V043_USABILITY.md), [acceptance](15_V043_ACCEPTANCE.md). These restore the administrator's visible date entry, allow explicitly reviewed current-plan removal and improve date/result explanations without changing clinical thresholds or historical records.
