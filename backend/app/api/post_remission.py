@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.api.flow_common import get_patient_or_404, record_outcome, require_state
+from app.api.flow_common import get_patient_or_404, prepare_measurement_snapshot, record_outcome, require_state
 from app.core.test_mode import effective_today_for_patient
 from app.domain import enums
 from app.domain.states import ST20, ST31, ST32, ST60
@@ -39,6 +39,11 @@ def submit_post_remission_review(
     patient = get_patient_or_404(db, patient_id)
     require_state(patient, (ST60,), "缓解后复评")
     source_state = patient.current_state
+    measurement_snapshot, measurement_updates = prepare_measurement_snapshot(
+        patient,
+        weight_kg=payload.f018_weight,
+        height_cm=payload.f019_height,
+    )
 
     result = evaluate_post_remission(
         source_state,
@@ -47,7 +52,10 @@ def submit_post_remission_review(
         remission_confirmed_date=patient.remission_confirmed_date,
     )
 
-    updates: dict[str, object] = {"next_review_date": result.next_review_date}
+    updates: dict[str, object] = {
+        **measurement_updates,
+        "next_review_date": result.next_review_date,
+    }
     if result.target_state in (ST31, ST32):
         # 返回主动管理：写入医生选择的阶段
         updates["stage"] = payload.target_stage
@@ -72,7 +80,7 @@ def submit_post_remission_review(
         rule_id=result.rule_id,
         template_id=result.template_id,
         output_text=result.output_text,
-        payload=payload.model_dump(mode="json"),
+        payload={**payload.model_dump(mode="json"), "measurement_snapshot": measurement_snapshot},
         request_id=payload.request_id,
         updates=updates,
     )

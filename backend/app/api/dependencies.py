@@ -12,11 +12,14 @@ from __future__ import annotations
 from fastapi import Depends, Header
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.core.exceptions import AuthError
 from app.core.security import verify_session_token
+from app.models.demo import DemoSession
 from app.models.user import User
 from app.repository import users as users_repo
 from app.repository.database import get_db
+from app.services.demo import digest
 
 
 def get_current_user(
@@ -32,6 +35,8 @@ def get_current_user(
     token = authorization.split(" ", 1)[1].strip()
     user_id = verify_session_token(token)
     if user_id is None:
+        raise AuthError("登录状态已失效，请重新登录。")
+    if get_settings().demo_mode and db.get(DemoSession, digest(token)) is None:
         raise AuthError("登录状态已失效，请重新登录。")
     user = users_repo.get_by_id(db, user_id)
     if user is None or not user.is_active:

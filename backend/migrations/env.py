@@ -17,6 +17,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.config import get_settings
 from app.models import Base
+from app.repository.migration_backup import backup_before_v03, backup_before_v04
 
 # Alembic 配置对象（读取 alembic.ini）
 config = context.config
@@ -29,7 +30,8 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # 连接串由应用配置决定（开发态 data/runtime，便携版用户数据目录）
-settings = get_settings()
+# 隔离迁移测试可传入显式Settings，不需要改变进程全局的开发库配置。
+settings = config.attributes.get("settings") or get_settings()
 # 目录必须先存在，否则 SQLite 会报 "unable to open database file"
 settings.ensure_dirs()
 config.set_main_option("sqlalchemy.url", settings.database_url)
@@ -51,6 +53,9 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """在线模式：连接数据库并执行迁移。"""
+    # 同时覆盖应用启动与手工Alembic命令；离线SQL不连接/备份数据库。
+    if backup_before_v03(settings.db_path) is None:
+        backup_before_v04(settings.db_path)
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

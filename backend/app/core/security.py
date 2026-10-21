@@ -144,7 +144,7 @@ def create_session_token(user_id: int, hours: int | None = None) -> tuple[str, i
     settings = get_settings()
     valid_hours = hours if hours is not None else settings.session_hours
     expires_at = int(time.time()) + valid_hours * 3600
-    payload = {"uid": user_id, "iat": int(time.time()), "exp": expires_at}
+    payload = {"uid": user_id, "iat": int(time.time()), "exp": expires_at, "nonce": secrets.token_hex(16)}
     payload_bytes = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     payload_text = _b64encode(payload_bytes)
     signature = hmac.new(get_secret_key(), payload_text.encode("ascii"), hashlib.sha256).digest()

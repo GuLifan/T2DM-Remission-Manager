@@ -122,7 +122,7 @@ export default function ObservationPage({ patient, onUpdated }: FlowPageProps) {
           因器官或体重获益用药退出时，保留既往观察记录，不等同于缓解失败或复发。
         </p>
         <div className="form-grid">
-          <FieldRow label="重新用药的原因">
+          <FieldRow label="重新用药原因">
             {(fieldProps) => (
               <select
                 {...fieldProps}
@@ -137,7 +137,7 @@ export default function ObservationPage({ patient, onUpdated }: FlowPageProps) {
               </select>
             )}
           </FieldRow>
-          <FieldRow label="返回阶段复评后的管理阶段" hint="由医生选择，系统不代为决定。">
+          <FieldRow label="返回管理阶段" hint="返回阶段复评后由医生选择，系统不代为决定。">
             {(fieldProps) => (
               <select
                 {...fieldProps}

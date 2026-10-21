@@ -7,7 +7,7 @@
  *   - 2026-09-24  v1.0  浏览器走查回归：ST40/ST50/ST60 不得显示为常规管理
  */
 
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -22,6 +22,34 @@ function jsonOk(body: unknown): Response {
 
 describe('PatientListPage 当前环节', () => {
   afterEach(() => vi.restoreAllMocks())
+
+  it('空列表无预置场景，医师手工填完资料后才能创建新病例', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/api/demo/cases')) return Promise.resolve(jsonOk({id:101}))
+      if (url.endsWith('/api/patients') || url.includes('/api/domain/states')) return Promise.resolve(jsonOk([]))
+      if (url.includes('/api/reference')) return Promise.resolve(jsonOk({departments:['内分泌科']}))
+      return Promise.resolve(jsonOk({can_use_test_tools:false,effective_date:'2026-10-13'}))
+    })
+    vi.stubGlobal('fetch',fetchMock)
+    const open=vi.fn()
+    const user=userEvent.setup()
+    render(<PatientListPage currentUser={{id:1,username:'new',display_name:'新医生',role:'doctor',is_test_account:true,simulated_date:null}} onOpenPatient={open} onLogout={vi.fn()} />)
+    expect(await screen.findByText('暂无病例，请新建患者。')).toBeInTheDocument()
+    expect(screen.queryByLabelText('新病例场景')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button',{name:'新建患者'}))
+    await user.click(screen.getByRole('button',{name:'保存并开始预评估'}))
+    expect(screen.getByText('请填写姓名、性别、出生年月和科室。')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url])=>String(url).includes('/demo/cases'))).toBe(false)
+    await user.type(screen.getByLabelText('姓名'),'全新虚构甲')
+    await user.selectOptions(screen.getByLabelText('性别'),'男')
+    await user.type(screen.getByLabelText('出生年'),'1990')
+    await user.selectOptions(screen.getByLabelText('出生月'),'5')
+    await user.click(screen.getByRole('button',{name:'保存并开始预评估'}))
+    expect(open).toHaveBeenCalledWith(101)
+    const request=fetchMock.mock.calls.find(([url])=>String(url).includes('/demo/cases'))!
+    expect(JSON.parse(String(request[1]?.body))).toEqual({name:'全新虚构甲',gender:'男',birth_date:'1990-05-01',department:'内分泌科'})
+  })
 
   it('按后端领域状态表显示缓解判定，不用空 stage 回退为常规管理', async () => {
     vi.stubGlobal(
@@ -86,11 +114,11 @@ describe('PatientListPage 当前环节', () => {
     expect(screen.queryByText('常规糖尿病综合管理')).not.toBeInTheDocument()
   })
 
-  it('按有效今天执行默认到期顺序，并支持搜索与表头双向排序', async () => {
+  it('支持模拟病例搜索、复评日期排序和归档列表', async () => {
     const user = userEvent.setup()
     let effectiveDate = '2026-09-24'
     const rows = [
-      ['未来患者', 'MRN-3', '2026-09-25', '2026-09-24T12:00:00'],
+      ['未来患者', 'ETMMS-000001', '2026-09-25', '2026-09-24T12:00:00'],
       ['无日期患者', 'MRN-4', null, '2026-09-24T13:00:00'],
       ['今日患者', 'MRN-2', '2026-09-24', '2026-09-24T10:00:00'],
       ['逾期患者', 'MRN-1', '2026-09-23', '2026-09-24T11:00:00'],
@@ -144,34 +172,14 @@ describe('PatientListPage 当前环节', () => {
     )
 
     await screen.findByText('逾期患者')
-    const patientRows = screen.getAllByRole('row').slice(1)
-    expect(patientRows.map((row) => row.textContent)).toEqual([
-      expect.stringContaining('逾期患者'),
-      expect.stringContaining('今日患者'),
-      expect.stringContaining('未来患者'),
-      expect.stringContaining('无日期患者'),
+    await user.selectOptions(screen.getByLabelText('排序'), 'date')
+    expect(screen.getAllByRole('row').slice(1).map((row) => row.textContent)).toEqual([
+      expect.stringContaining('逾期患者'), expect.stringContaining('今日患者'),
+      expect.stringContaining('未来患者'), expect.stringContaining('无日期患者'),
     ])
-    expect(patientRows[0]).toHaveClass('patient-row--overdue')
-    expect(patientRows[1]).toHaveClass('patient-row--today')
-
-    await user.type(screen.getByRole('searchbox'), 'MRN-3')
+    await user.type(screen.getByLabelText('搜索病例'), 'ETMMS-000001')
     expect(screen.getAllByRole('row')).toHaveLength(2)
-    expect(screen.getByText('未来患者')).toBeInTheDocument()
-    await user.clear(screen.getByRole('searchbox'))
-
-    await user.clear(screen.getByLabelText('当前日期'))
-    await user.type(screen.getByLabelText('当前日期'), '2026/09/25')
-    await user.click(screen.getByRole('button', { name: '应用日期' }))
-    await waitFor(() => {
-      expect(screen.getByText('未来患者').closest('tr')).toHaveClass('patient-row--today')
-      expect(screen.getByText('今日患者').closest('tr')).toHaveClass('patient-row--overdue')
-    })
-
-    const nameHeader = screen.getByRole('button', { name: /姓名/ })
-    await user.click(nameHeader)
-    const ascendingRows = screen.getAllByRole('row').slice(1)
-    expect(within(ascendingRows[0]).getByText('今日患者')).toBeInTheDocument()
-    await user.click(nameHeader)
-    expect(nameHeader.closest('th')).toHaveAttribute('aria-sort', 'descending')
+    await user.click(screen.getByRole('button', {name:'已归档病例'}))
+    expect(screen.getByText('暂无归档记录')).toBeInTheDocument()
   })
 })

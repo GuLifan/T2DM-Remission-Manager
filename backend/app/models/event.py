@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, Date, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -44,4 +44,8 @@ class Event(Base):
     request_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     # 模拟日期审计：事件使用真实日期时为空；使用模拟日期时保存实际日期
     simulated_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # 老事件保留v1.0来源；只有新接口明确使用新契约时才标记v0.3。
+    clinical_contract_version: Mapped[str] = mapped_column(String(16), default="v1.0")
+    # 同次E3可能含信息提示+动作，故保存有序ID列表，不丢失并行转移。
+    transition_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)

@@ -1,0 +1,389 @@
+{
+  "version": "2026-10-19",
+  "categories": [
+    {
+      "id": "insulin",
+      "name": "胰岛素类",
+      "medications": [
+        {
+          "id": "insulin-01",
+          "name": "短效人胰岛素（RI）",
+          "aliases": []
+        },
+        {
+          "id": "insulin-02",
+          "name": "门冬胰岛素",
+          "aliases": []
+        },
+        {
+          "id": "insulin-03",
+          "name": "赖脯胰岛素",
+          "aliases": []
+        },
+        {
+          "id": "insulin-04",
+          "name": "谷赖胰岛素",
+          "aliases": []
+        },
+        {
+          "id": "insulin-05",
+          "name": "中效人胰岛素（NPH）",
+          "aliases": []
+        },
+        {
+          "id": "insulin-06",
+          "name": "长效胰岛素（PZI）",
+          "aliases": []
+        },
+        {
+          "id": "insulin-07",
+          "name": "甘精胰岛素U100",
+          "aliases": []
+        },
+        {
+          "id": "insulin-08",
+          "name": "甘精胰岛素U300",
+          "aliases": []
+        },
+        {
+          "id": "insulin-09",
+          "name": "地特胰岛素",
+          "aliases": []
+        },
+        {
+          "id": "insulin-10",
+          "name": "德谷胰岛素",
+          "aliases": []
+        },
+        {
+          "id": "insulin-11",
+          "name": "预混人胰岛素（30R，70/30）",
+          "aliases": []
+        },
+        {
+          "id": "insulin-12",
+          "name": "预混人胰岛素（40R）",
+          "aliases": []
+        },
+        {
+          "id": "insulin-13",
+          "name": "预混人胰岛素（50R）",
+          "aliases": [
+            "预混人胰岛素(5OR)"
+          ]
+        },
+        {
+          "id": "insulin-14",
+          "name": "预混门冬胰岛素30",
+          "aliases": []
+        },
+        {
+          "id": "insulin-15",
+          "name": "预混门冬胰岛素50",
+          "aliases": []
+        },
+        {
+          "id": "insulin-16",
+          "name": "预混赖脯胰岛素25",
+          "aliases": []
+        },
+        {
+          "id": "insulin-17",
+          "name": "预混赖脯胰岛素50",
+          "aliases": []
+        },
+        {
+          "id": "insulin-18",
+          "name": "德谷门冬双胰岛素70/30",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "metformin",
+      "name": "二甲双胍",
+      "medications": [
+        {
+          "id": "metformin-01",
+          "name": "二甲双胍",
+          "aliases": []
+        },
+        {
+          "id": "metformin-02",
+          "name": "二甲双胍缓释片",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "sulfonylurea",
+      "name": "磺脲类",
+      "medications": [
+        {
+          "id": "sulfonylurea-01",
+          "name": "格列本脲",
+          "aliases": []
+        },
+        {
+          "id": "sulfonylurea-02",
+          "name": "格列吡嗪",
+          "aliases": []
+        },
+        {
+          "id": "sulfonylurea-03",
+          "name": "格列吡嗪控释片",
+          "aliases": []
+        },
+        {
+          "id": "sulfonylurea-04",
+          "name": "格列齐特",
+          "aliases": []
+        },
+        {
+          "id": "sulfonylurea-05",
+          "name": "格列齐特缓释片",
+          "aliases": [
+            "格列齐特控释片"
+          ]
+        },
+        {
+          "id": "sulfonylurea-06",
+          "name": "格列喹酮",
+          "aliases": []
+        },
+        {
+          "id": "sulfonylurea-07",
+          "name": "格列美脲",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "glinide",
+      "name": "格列奈类",
+      "medications": [
+        {
+          "id": "glinide-01",
+          "name": "瑞格列奈",
+          "aliases": []
+        },
+        {
+          "id": "glinide-02",
+          "name": "那格列奈",
+          "aliases": []
+        },
+        {
+          "id": "glinide-03",
+          "name": "米格列奈钙片",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "tzd",
+      "name": "噻唑烷二酮类（TZD）",
+      "medications": [
+        {
+          "id": "tzd-01",
+          "name": "吡格列酮",
+          "aliases": []
+        },
+        {
+          "id": "tzd-02",
+          "name": "罗格列酮",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "alpha",
+      "name": "α-糖苷酶抑制剂",
+      "medications": [
+        {
+          "id": "alpha-01",
+          "name": "阿卡波糖",
+          "aliases": []
+        },
+        {
+          "id": "alpha-02",
+          "name": "伏格列波糖",
+          "aliases": []
+        },
+        {
+          "id": "alpha-03",
+          "name": "米格列醇",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "dpp4",
+      "name": "DPP-4抑制剂",
+      "medications": [
+        {
+          "id": "dpp4-01",
+          "name": "西格列汀",
+          "aliases": []
+        },
+        {
+          "id": "dpp4-02",
+          "name": "沙格列汀",
+          "aliases": []
+        },
+        {
+          "id": "dpp4-03",
+          "name": "利格列汀",
+          "aliases": []
+        },
+        {
+          "id": "dpp4-04",
+          "name": "阿格列汀",
+          "aliases": []
+        },
+        {
+          "id": "dpp4-05",
+          "name": "瑞格列汀",
+          "aliases": []
+        },
+        {
+          "id": "dpp4-06",
+          "name": "考格列汀",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "sglt2",
+      "name": "SGLT2抑制剂",
+      "medications": [
+        {
+          "id": "sglt2-01",
+          "name": "达格列净",
+          "aliases": []
+        },
+        {
+          "id": "sglt2-02",
+          "name": "恩格列净",
+          "aliases": []
+        },
+        {
+          "id": "sglt2-03",
+          "name": "卡格列净",
+          "aliases": []
+        },
+        {
+          "id": "sglt2-04",
+          "name": "艾托格列净",
+          "aliases": []
+        },
+        {
+          "id": "sglt2-05",
+          "name": "恒格列净",
+          "aliases": []
+        },
+        {
+          "id": "sglt2-06",
+          "name": "加格列净",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "gka",
+      "name": "葡萄糖激酶激活剂（GKA）",
+      "medications": [
+        {
+          "id": "gka-01",
+          "name": "多格列艾汀",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "glp1",
+      "name": "GLP-1受体激动剂",
+      "medications": [
+        {
+          "id": "glp1-01",
+          "name": "司美格鲁肽片",
+          "aliases": []
+        },
+        {
+          "id": "glp1-02",
+          "name": "贝纳鲁肽",
+          "aliases": []
+        },
+        {
+          "id": "glp1-03",
+          "name": "艾塞那肽",
+          "aliases": []
+        },
+        {
+          "id": "glp1-04",
+          "name": "利司那肽",
+          "aliases": []
+        },
+        {
+          "id": "glp1-05",
+          "name": "利拉鲁肽",
+          "aliases": []
+        },
+        {
+          "id": "glp1-06",
+          "name": "艾塞那肽周制剂",
+          "aliases": []
+        },
+        {
+          "id": "glp1-07",
+          "name": "度拉糖肽",
+          "aliases": [
+            "度拉唐肽"
+          ]
+        },
+        {
+          "id": "glp1-08",
+          "name": "洛塞那肽",
+          "aliases": []
+        },
+        {
+          "id": "glp1-09",
+          "name": "司美格鲁肽注射液",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "dual",
+      "name": "GIP/GLP-1双受体激动剂",
+      "medications": [
+        {
+          "id": "dual-01",
+          "name": "替尔泊肽",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "ppar",
+      "name": "PPAR泛激动剂",
+      "medications": [
+        {
+          "id": "ppar-01",
+          "name": "西格列他钠",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "id": "other",
+      "name": "其他药物",
+      "medications": [
+        {
+          "id": "other-01",
+          "name": "其他药物",
+          "aliases": []
+        }
+      ]
+    }
+  ]
+}

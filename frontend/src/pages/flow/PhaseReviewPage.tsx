@@ -17,12 +17,12 @@ import { useState } from 'react'
 import { ApiError } from '../../api/client'
 import { domainApi, flowApi } from '../../api/endpoints'
 import {
+  AssessmentMeasurementFields,
   CheckboxGroup,
   ChoiceGroup,
   DateInput,
   ErrorBanner,
   FieldRow,
-  NumericInput,
   ResultBanner,
   SettingsRow,
 } from '../../components'
@@ -56,7 +56,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
   const [stageIndicator, setStageIndicator] = useState('')
   const [executable, setExecutable] = useState('')
   const [nextReviewDate, setNextReviewDate] = useState('')
-  const [weight, setWeight] = useState(patient.weight_kg == null ? '' : String(patient.weight_kg))
+  const [weight, setWeight] = useState('')
   const [height, setHeight] = useState(patient.height_cm == null ? '' : String(patient.height_cm))
 
   // 常规动作相关
@@ -91,7 +91,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
   function buildPayload(): Record<string, unknown> {
     const base = {
       f018_weight: weight === '' ? null : Number(weight),
-      f019_height: height === '' ? null : Number(height),
+      f019_height: patient.height_cm == null && height !== '' ? Number(height) : null,
       f030_safety_issues: safetyIssues,
       f031_stage_indicator: stageIndicator || null,
       f032_treatment_changes: treatmentChanges,
@@ -132,6 +132,10 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
 
   /** 提交阶段复评。 */
   async function handleSubmit() {
+    if (!weight || (patient.height_cm == null && !height)) {
+      setError(patient.height_cm == null ? '请填写本次体重和患者身高。' : '请填写本次体重。')
+      return
+    }
     setError('')
     setSubmitting(true)
     try {
@@ -157,33 +161,14 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
           {error ? <ErrorBanner message={error} /> : null}
 
           <div className="form-grid">
-            <FieldRow label="本次体重" hint="选填；留空沿用患者最新值。">
-              {(fieldProps) => (
-                <NumericInput
-                  {...fieldProps}
-                  value={weight}
-                  onChange={setWeight}
-                  unit="kg"
-                  min={0.1}
-                  max={500}
-                  step={0.1}
-                />
-              )}
-            </FieldRow>
-            <FieldRow label="本次身高" hint="选填；留空沿用患者最新值。">
-              {(fieldProps) => (
-                <NumericInput
-                  {...fieldProps}
-                  value={height}
-                  onChange={setHeight}
-                  unit="cm"
-                  min={50}
-                  max={250}
-                  step={0.1}
-                />
-              )}
-            </FieldRow>
-            <FieldRow label="一个主要阶段指标">
+            <AssessmentMeasurementFields
+              patient={patient}
+              weight={weight}
+              onWeightChange={setWeight}
+              height={height}
+              onHeightChange={setHeight}
+            />
+            <FieldRow label="主要阶段指标">
               {(fieldProps) => (
                 <input
                   {...fieldProps}
@@ -194,7 +179,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
                 />
               )}
             </FieldRow>
-            <FieldRow label="实际可执行性">
+            <FieldRow label="执行情况">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -211,11 +196,11 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
             </FieldRow>
           </div>
           <p className="section__description">
-            当前 BMI：{height && weight ? (Number(weight) / ((Number(height) / 100) ** 2)).toFixed(1) : patient.bmi ?? '—'}（仅作数值快照，不参与自动裁决）
+            上次 BMI：{patient.bmi ?? '—'}（仅供参考；本次 BMI 将按新体重重算）
           </p>
 
           <SettingsRow
-            label="新发生的安全问题（可多选）"
+            label="安全问题"
             stacked
             control={
               <CheckboxGroup
@@ -227,7 +212,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
             }
           />
           <SettingsRow
-            label="核心治疗变化（可多选）"
+            label="治疗变化"
             stacked
             control={
               <CheckboxGroup
@@ -253,7 +238,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
             />
           ) : null}
           <ChoiceGroup
-            legend="选择本次实际发生的分支"
+            legend="实际分支"
             value={branchKey}
             onChange={setBranchKey}
             options={branchOptions}
@@ -273,7 +258,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
 
           {branchKey === 'uncontrolled' ? (
             <>
-              <FieldRow label="明显血糖失控的处理说明" hint="由医生确认，系统不设自动阈值。">
+              <FieldRow label="失控处理" hint="明显血糖失控时填写；由医生确认，系统不设自动阈值。">
                 {(fieldProps) => (
                   <textarea
                     {...fieldProps}
@@ -283,7 +268,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
                   />
                 )}
               </FieldRow>
-              <FieldRow label="急症处理情况（如适用）">
+              <FieldRow label="急症处理" hint="如适用。">
                 {(fieldProps) => (
                   <input
                     {...fieldProps}
@@ -299,7 +284,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
           {branchKey === 'on_treatment_non_diabetic' ? (
             <>
               <FieldRow
-                label="当前降糖作用药物的主要使用目的"
+                label="用药目的"
                 hint="用于心肾或体重获益时不建议为获得缓解标签而停药。"
               >
                 {(fieldProps) => (
@@ -319,7 +304,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
                 )}
               </FieldRow>
               <SettingsRow
-                label="本次血糖已达非糖尿病范围（医生判断）"
+                label="血糖达标确认"
                 control={
                   <label className="checkbox-line">
                     <input
@@ -335,7 +320,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
           ) : null}
 
           {branchKey === 'stop_last_med' ? (
-            <FieldRow label="停用最后一种具有降糖作用药物的日期" hint="记录后系统自动进入缓解观察期，无需其他操作。">
+            <FieldRow label="最后停药日期" hint="停用最后一种具有降糖作用药物；记录后自动进入观察期。">
               {(fieldProps) => (
                 <DateInput
                   {...fieldProps}
@@ -348,7 +333,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
 
           {branchKey === 'routine_action' ? (
             <>
-              <FieldRow label="本次复评动作">
+              <FieldRow label="复评动作">
                 {(fieldProps) => (
                   <select
                     {...fieldProps}
@@ -377,7 +362,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
               ) : null}
               {action === ACT_SWITCH ? (
                 <div className="form-grid">
-                  <FieldRow label="新的管理阶段">
+                  <FieldRow label="新管理阶段">
                     {(fieldProps) => (
                       <select
                         {...fieldProps}
@@ -394,7 +379,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
                       </select>
                     )}
                   </FieldRow>
-                  <FieldRow label="新的主要阶段目标">
+                  <FieldRow label="新阶段目标">
                     {(fieldProps) => (
                       <input
                         {...fieldProps}
@@ -407,7 +392,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
                 </div>
               ) : null}
               {action === ACT_END ? (
-                <FieldRow label="结束主动管理的原因">
+                <FieldRow label="结束原因">
                   {(fieldProps) => (
                     <textarea
                       {...fieldProps}
@@ -421,7 +406,7 @@ export default function PhaseReviewPage({ patient, onUpdated }: FlowPageProps) {
             </>
           ) : null}
 
-          <FieldRow label="下次正式复评日期" hint="留空按默认 12 周计算。">
+          <FieldRow label="下次复评日期" hint="留空按默认 12 周计算。">
             {(fieldProps) => (
               <DateInput
                 {...fieldProps}

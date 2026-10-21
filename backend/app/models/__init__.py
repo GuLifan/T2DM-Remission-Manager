@@ -11,6 +11,8 @@
 
 from app.models.audit import AuditLog
 from app.models.base import Base
+from app.models.clinical_record import ClinicalRecord
+from app.models.demo import DemoInvite, DemoSession
 from app.models.department import Department
 from app.models.event import Event
 from app.models.evidence import Evidence, EvidenceChunk
@@ -20,6 +22,7 @@ from app.models.user import User
 
 __all__ = [
     "Base",
+    "ClinicalRecord",
     "User",
     "Patient",
     "Event",
@@ -28,4 +31,6 @@ __all__ = [
     "Department",
     "Evidence",
     "EvidenceChunk",
+    "DemoInvite",
+    "DemoSession",
 ]

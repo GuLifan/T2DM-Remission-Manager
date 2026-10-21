@@ -62,6 +62,8 @@ def _pre_enter(client, doctor, patient_id: int) -> dict:
         "f003_type_doubt": enums.NO,
         "f004_treatment_context_sufficient": enums.YES,
         "f005_refused": enums.NO,
+        "f018_weight": 70,
+        "f019_height": 165,
     }
     response = client.post(f"/api/patients/{patient_id}/pre-assessment", json=payload, headers=doctor["headers"])
     assert response.status_code == 200, response.text
@@ -71,6 +73,7 @@ def _pre_enter(client, doctor, patient_id: int) -> dict:
 def _start_stable(client, doctor, patient_id: int) -> None:
     """完整评估：启动血糖稳定阶段。"""
     payload = {
+        "f018_weight": 69.5,
         "f026_start": enums.START,
         "f027_stage": enums.STAGE_STABLE,
         "f028_stage_goal": "安全改善明显高血糖",
@@ -144,6 +147,7 @@ def test_full_flow_from_regular_care_to_post_remission(client, doctor, db_sessio
     stop = client.post(
         f"/api/patients/{patient_id}/phase-review",
         json={
+            "f018_weight": 68,
             "f034_action": enums.ACT_CONTINUE,
             "f035_stop_last_med": True,
             "f036_stop_date": recent_stop_date.isoformat(),
@@ -177,6 +181,7 @@ def test_full_flow_from_regular_care_to_post_remission(client, doctor, db_sessio
 
     # 核对：客观条件满足（只读接口，不落库）
     judge_payload = {
+        "f018_weight": 66,
         "f041_diagnosis_credible": enums.YES,
         "f042_drug_free_3m": enums.YES,
         "f043_hba1c_reliable": enums.YES,
@@ -218,7 +223,11 @@ def test_full_flow_from_regular_care_to_post_remission(client, doctor, db_sessio
     # 缓解后复评：维持
     post = client.post(
         f"/api/patients/{patient_id}/post-remission-review",
-        json={"f050_med_status": enums.MED_UNUSED, "f055_glucose_state": enums.GLUCOSE_BELOW_THRESHOLD},
+        json={
+            "f018_weight": 65,
+            "f050_med_status": enums.MED_UNUSED,
+            "f055_glucose_state": enums.GLUCOSE_BELOW_THRESHOLD,
+        },
         headers=doctor["headers"],
     )
     assert post.status_code == 200, post.text
@@ -235,6 +244,7 @@ def test_case3_benefit_drug_path_over_http(client, doctor) -> None:
     response = client.post(
         f"/api/patients/{patient_id}/phase-review",
         json={
+            "f018_weight": 68,
             "f034_action": enums.ACT_CONTINUE,
             "f053_has_drug": True,
             "f054_purpose": enums.PURPOSE_ORGAN,
@@ -280,6 +290,8 @@ def test_acute_stabilized_requires_acute_hold_first(client, doctor, db_session) 
             "f003_type_doubt": enums.NO,
             "f004_treatment_context_sufficient": enums.YES,
             "f005_refused": enums.NO,
+            "f018_weight": 70,
+            "f019_height": 165,
             "f012_pre_tasks": "先处理急性问题",
         },
         headers=doctor["headers"],
@@ -290,7 +302,7 @@ def test_acute_stabilized_requires_acute_hold_first(client, doctor, db_session) 
     # 再做快速建档 → 允许，且直接进入血糖稳定阶段
     ok = client.post(
         f"/api/patients/{patient_id}/pre-assessment/acute-stabilized",
-        json={"stage_goal": "安全降糖", "interventions": ["结构化生活方式"]},
+        json={"f018_weight": 69, "stage_goal": "安全降糖", "interventions": ["结构化生活方式"]},
         headers=doctor["headers"],
     )
     assert ok.status_code == 200, ok.text
@@ -314,6 +326,8 @@ def test_close_path_requires_type_doubt_first(client, doctor, db_session) -> Non
             "f003_type_doubt": enums.YES,
             "f004_treatment_context_sufficient": enums.YES,
             "f005_refused": enums.NO,
+            "f018_weight": 70,
+            "f019_height": 165,
             "f012_pre_tasks": "复查C肽与抗体",
         },
         headers=doctor["headers"],
@@ -351,7 +365,12 @@ def test_confirm_requires_objective_check_first(client, doctor, db_session) -> N
     # 直接停药→观察期→判定，跳过核对
     client.post(
         f"/api/patients/{patient_id}/phase-review",
-        json={"f034_action": enums.ACT_CONTINUE, "f035_stop_last_med": True, "f036_stop_date": "2026-01-31"},
+        json={
+            "f018_weight": 68,
+            "f034_action": enums.ACT_CONTINUE,
+            "f035_stop_last_med": True,
+            "f036_stop_date": "2026-01-31",
+        },
         headers=doctor["headers"],
     )
     patient = db_session.get(Patient, patient_id)
@@ -384,6 +403,8 @@ def test_duplicate_request_id_is_rejected(client, doctor, db_session) -> None:
         "f003_type_doubt": enums.NO,
         "f004_treatment_context_sufficient": enums.YES,
         "f005_refused": enums.NO,
+        "f018_weight": 70,
+        "f019_height": 165,
         "f012_pre_tasks": "先处理急性问题",
     }
     first = client.post(f"/api/patients/{patient_id}/pre-assessment", json=payload, headers=doctor["headers"])
@@ -414,10 +435,48 @@ def test_event_and_audit_are_written_together(client, doctor, db_session) -> Non
     assert audits, "决策未写入审计日志"
 
 
-def test_phase_review_updates_measurements_and_keeps_effective_snapshot(
+def test_height_is_locked_and_exclusive_multiselect_is_rejected(client, doctor) -> None:
+    """首次确认身高后临床接口不得修改；排他多选不得与具体诉求并存。"""
+    patient_id = _create_patient(client, doctor, "MRN-M4-HEIGHT-LOCK")
+    _reopen(client, doctor, patient_id)
+
+    conflicted = client.post(
+        f"/api/patients/{patient_id}/pre-assessment",
+        json={
+            "f001_t2dm_established": enums.YES,
+            "f002_acute_unsafe": enums.NO,
+            "f003_type_doubt": enums.NO,
+            "f004_treatment_context_sufficient": enums.YES,
+            "f005_refused": enums.NO,
+            "f010_demands": ["无明确诉求", "减重"],
+            "f018_weight": 70,
+            "f019_height": 165,
+        },
+        headers=doctor["headers"],
+    )
+    assert conflicted.status_code == 422
+
+    _pre_enter(client, doctor, patient_id)
+    changed = client.post(
+        f"/api/patients/{patient_id}/full-assessment",
+        json={
+            "f018_weight": 69,
+            "f019_height": 170,
+            "f026_start": enums.START,
+            "f027_stage": enums.STAGE_STABLE,
+            "f028_stage_goal": "验证身高锁定",
+            "f029_interventions": ["结构化生活方式"],
+        },
+        headers=doctor["headers"],
+    )
+    assert changed.status_code == 422
+    assert changed.json()["code"] == "HEIGHT_LOCKED"
+
+
+def test_phase_review_requires_fresh_weight_and_keeps_measurement_snapshot(
     client, doctor, db_session
 ) -> None:
-    """复评可局部更新测量值；留空沿用最新值，且每次事件保存实际生效快照。"""
+    """复评必须重新填写体重、沿用锁定身高，并保存本次测量快照。"""
     patient_id = _create_patient(client, doctor, "MRN-M4-PHASE-MEASURE")
     _reopen(client, doctor, patient_id)
     _pre_enter(client, doctor, patient_id)
@@ -425,7 +484,6 @@ def test_phase_review_updates_measurements_and_keeps_effective_snapshot(
         f"/api/patients/{patient_id}/full-assessment",
         json={
             "f018_weight": 70,
-            "f019_height": 175,
             "f026_start": enums.START,
             "f027_stage": enums.STAGE_STABLE,
             "f028_stage_goal": "验证测量快照",
@@ -443,14 +501,22 @@ def test_phase_review_updates_measurements_and_keeps_effective_snapshot(
     )
     assert first.status_code == 200, first.text
     detail = client.get(f"/api/patients/{patient_id}", headers=doctor["headers"]).json()
-    assert detail["height_cm"] == 175
+    assert detail["height_cm"] == 165
     assert detail["weight_kg"] == 72
-    assert detail["bmi"] == 23.5
+    assert detail["bmi"] == 26.4
 
-    # 下一次全部留空，患者最新快照不变；事件仍要保存本次实际采用的值。
-    second = client.post(
+    # 下一次不填体重必须被拒绝，不能静默沿用 72 kg。
+    missing = client.post(
         f"/api/patients/{patient_id}/phase-review",
         json={"f034_action": enums.ACT_CONTINUE},
+        headers=doctor["headers"],
+    )
+    assert missing.status_code == 422
+    assert missing.json()["code"] == "WEIGHT_REQUIRED"
+
+    second = client.post(
+        f"/api/patients/{patient_id}/phase-review",
+        json={"f018_weight": 71, "f034_action": enums.ACT_CONTINUE},
         headers=doctor["headers"],
     )
     assert second.status_code == 200, second.text
@@ -462,8 +528,8 @@ def test_phase_review_updates_measurements_and_keeps_effective_snapshot(
         .first()
     )
     assert event is not None and event.payload is not None
-    effective = json.loads(event.payload)["effective_measurements"]
-    assert effective == {"height_cm": 175.0, "weight_kg": 72.0, "bmi": 23.5}
+    effective = json.loads(event.payload)["measurement_snapshot"]
+    assert effective == {"height_cm": 165.0, "weight_kg": 71.0, "bmi": 26.1}
 
 
 @pytest.mark.parametrize(
@@ -480,6 +546,7 @@ def test_judgement_requires_doctor_chosen_stage_when_returning(
     stopped = client.post(
         f"/api/patients/{patient_id}/phase-review",
         json={
+            "f018_weight": 68,
             "f034_action": enums.ACT_CONTINUE,
             "f035_stop_last_med": True,
             "f036_stop_date": date.today().isoformat(),
@@ -498,6 +565,7 @@ def test_judgement_requires_doctor_chosen_stage_when_returning(
     assert _patient_state(db_session, patient_id) == "ST50"
 
     base_payload = {
+        "f018_weight": 67,
         "f041_diagnosis_credible": enums.YES,
         "f042_drug_free_3m": enums.NO,
         "f043_hba1c_reliable": enums.YES,

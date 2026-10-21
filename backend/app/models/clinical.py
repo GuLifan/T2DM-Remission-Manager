@@ -14,7 +14,17 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+EXCLUSIVE_MULTISELECT_VALUES = {"无", "未见", "未使用", "不适用", "无明确诉求"}
+
+
+def _reject_exclusive_multiselect_conflict(values: list[str]) -> list[str]:
+    """拒绝“无/不适用”等排他项与具体结论并存。"""
+    exclusive = EXCLUSIVE_MULTISELECT_VALUES.intersection(values)
+    if exclusive and len(set(values)) > 1:
+        raise ValueError(f"排他选项“{next(iter(exclusive))}”不能与其他选项同时选择。")
+    return values
 
 # ===================== 事件1：60秒缓解预评估 =====================
 
@@ -34,13 +44,15 @@ class PreAssessmentInput(BaseModel):
     f006_duration_years: int | None = Field(default=None, ge=0, le=60)
     f006_duration_months: int = Field(default=0, ge=0, le=11)
     f007_bmi_hint: str | None = None
-    # 第二批把身高/体重前移到预评估；仍只作记录，不参与准入判断
+    # 第四批：体重由接口层强制每次新填；身高仅在患者尚无身高时首次确认
     f018_weight: float | None = Field(default=None, gt=0, le=500)
     f019_height: float | None = Field(default=None, ge=50, le=250)
     f008_glucose_status: str | None = None
     f009_insulin: str | None = None
     f010_demands: list[str] = Field(default_factory=list)
     f012_pre_tasks: str | None = None
+
+    _validate_demands = field_validator("f010_demands")(_reject_exclusive_multiselect_conflict)
 
 
 class PreAssessmentResult(BaseModel):
@@ -62,6 +74,8 @@ class AcuteStabilizedInput(BaseModel):
     """
 
     request_id: str | None = None
+    f018_weight: float | None = Field(default=None, gt=0, le=500)
+    f019_height: float | None = Field(default=None, ge=50, le=250)
     stage_goal: str = Field(min_length=1, description="一个主要阶段目标")
     interventions: list[str] = Field(description="干预组合（多选，至少一项）")
     next_review_date: date | None = None
@@ -116,7 +130,7 @@ class PhaseReviewInput(BaseModel):
     """阶段复评输入：复评最少输入（F030–F033）+ 动作（F034–F036）+ 分支事实。"""
 
     request_id: str | None = None
-    # 第三批允许在正式复评时更新最新身高/体重；空值表示沿用患者现有快照
+    # 第四批：体重由接口层强制每次新填；身高只允许在尚未建立时首次确认
     f018_weight: float | None = Field(default=None, gt=0, le=500)
     f019_height: float | None = Field(default=None, ge=50, le=250)
     f030_safety_issues: list[str] = Field(default_factory=list)
@@ -137,6 +151,11 @@ class PhaseReviewInput(BaseModel):
     glucose_non_diabetic: bool = False
     f056_uncontrolled: bool = False
     emergency_note: str | None = None
+
+    _validate_safety_issues = field_validator("f030_safety_issues")(_reject_exclusive_multiselect_conflict)
+    _validate_treatment_changes = field_validator("f032_treatment_changes")(
+        _reject_exclusive_multiselect_conflict
+    )
 
 
 class PhaseReviewResult(BaseModel):
@@ -198,6 +217,8 @@ class RemissionJudgeInput(BaseModel):
     """缓解判定输入：诊断可信、停药时间、指标与独立复核。"""
 
     request_id: str | None = None
+    f018_weight: float | None = Field(default=None, gt=0, le=500)
+    f019_height: float | None = Field(default=None, ge=50, le=250)
     f041_diagnosis_credible: str = Field(description="既往T2DM诊断是否可信（是/否/待复核）")
     f042_drug_free_3m: str = Field(description="已停用全部降糖作用药物至少3个月（是/否/待核对）")
     f043_hba1c_reliable: str = Field(description="HbA1c结果是否可可靠解释（是/否/待复核）")
@@ -245,6 +266,8 @@ class PostRemissionInput(BaseModel):
     """缓解后复评输入。"""
 
     request_id: str | None = None
+    f018_weight: float | None = Field(default=None, gt=0, le=500)
+    f019_height: float | None = Field(default=None, ge=50, le=250)
     f049_glucose: str | None = None
     f050_med_status: str = Field(description="未使用 / 因高血糖 / 因器官获益 / 因体重获益")
     f051_risk_triggers: list[str] = Field(default_factory=list)

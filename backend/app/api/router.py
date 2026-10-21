@@ -13,6 +13,9 @@ from fastapi import APIRouter
 
 from app.api import (
     auth,
+    clinical_v03,
+    clinical_v04,
+    demo,
     domain_data,
     evidence,
     full_assessment,
@@ -44,3 +47,6 @@ api_router.include_router(phase_review.router)
 api_router.include_router(observation.router)
 api_router.include_router(remission_judge.router)
 api_router.include_router(post_remission.router)
+api_router.include_router(clinical_v03.router)
+api_router.include_router(clinical_v04.router)
+api_router.include_router(demo.router)

@@ -35,6 +35,8 @@ def add_event(
     payload: dict | None = None,
     request_id: str | None = None,
     simulated_date: date | None = None,
+    clinical_contract_version: str = "v1.0",
+    transition_ids: list[str] | None = None,
 ) -> Event:
     """追加一条事件流水。
 
@@ -57,6 +59,8 @@ def add_event(
         payload=json.dumps(payload, ensure_ascii=False) if payload is not None else None,
         request_id=request_id,
         simulated_date=simulated_date,
+        clinical_contract_version=clinical_contract_version,
+        transition_ids=transition_ids,
     )
     db.add(event)
     db.flush()

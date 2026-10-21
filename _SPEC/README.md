@@ -1,87 +1,11 @@
-# _SPEC 目录说明 — 早期2型糖尿病缓解管理软件（ETMMS）v1.0
+# Specification index
 
-> **版本**：v1.0｜**建立日期**：2026-09-19｜**维护者**：LIFAN GU；AI Agent（Codex）
+1. [Public repository and deployment boundaries](01_PUBLIC_REPOSITORY.md) governs publication, private resource handling and branch permissions.
+2. [Input, defaults and clinical UI contract](06_V04_REPAIR_SPEC.md).
+3. [Data, history and migration contract](07_V04_DATA_AND_MIGRATION.md).
+4. [Presentation and administrator date permissions](09_ACCEPTANCE_PRESENTATION_AND_PERMISSIONS.md).
+5. [0.4.2 repair rules](11_PUBLIC_QA_REPAIR_SPEC.md) and [acceptance criteria](12_PUBLIC_QA_REPAIR_ACCEPTANCE.md) override earlier behavior where specified.
 
----
+The machine-readable clinical contract is `backend/app/domain/clinical_v03_contract.json`. It retains 51 original transitions and 7 approved supplemental transitions. Original stakeholder documents, historical approval conversations and local reports referenced in older specification prose are private project records, not repository dependencies. Publication boundaries above override earlier packaging language: source originals belong only in authorized private deployments, never in Git.
 
-## 一、本目录的定位
-
-本目录是 V1.0 的**需求与设计规范的唯一工程化来源（Spec as Source of Truth）**，遵循 spec 编程：
-
-- **先规范、后代码**：需求先落到本目录并经 Lifan 确认，再进入计划、任务与实现。
-- **规范可审查、可验证**：每条功能需求带验收标准；每个状态、规则、字段、输出模板带唯一标识，可跨文档追踪。
-- **规范进版本库**：全部文档随代码纳入 Git，任何会话、任何工具都以本目录为共同上下文。
-
-> **UI 不在本目录**：界面与代码注释的唯一真源是根目录 `UI.md`。本目录各文件**不再描述 UI 细节**，只描述需求与规则；需要界面约定时一律引用 `UI.md`。
-
----
-
-## 二、Spec 工作流
-
-```txt
-明确需求（Specify）→ 计划（Plan）→ 任务（Tasks）→ 实现与核对（Implement & Verify）
-```
-
-1. **明确需求**：维护 01–05 号文档；临床内容以《临床流程锁定稿》为唯一主依据，不得发明新临床节点、阈值或刚性准入规则。
-2. **计划**：见 `08_实施计划与交付验收`，里程碑与任务必须能回溯到 FR 编号。
-3. **任务**：任务清单按依赖排序、可勾选，验收标准引用对应 FR。
-4. **实现与核对**：实现前先核对 spec；发现不一致时**改 spec 或改代码，二者取一**，并把差异记入 `06_问题清单与裁决记录`。
-
----
-
-## 三、依据优先级（锁定）
-
-| 优先级 | 材料 | 位置 | 使用方式 |
-| --- | --- | --- | --- |
-| 1 | 《临床流程锁定稿 v1.0》 | `_DEV\甲方材料\原件`（docx）+ `md派生` | **唯一临床主依据**；冲突时以本文件为准 |
-| 2 | 《学生首轮任务与联合交付要求 v1.0》 | 同上 | 交付要求（V1.0 已升级为"直接交付成品"） |
-| 3 | 中国 T2DM 缓解专家共识 / 国际缓解共识 / 中国糖尿病防治指南 2024 版 | `_DEV\医学依据` | 仅用于核对医学依据与出处 |
-| 4 | 临床流程实现表（主表 / 状态与枚举 / 状态转换速览 / 最小字段映射 / 输出模板） | `_DEV\甲方材料\原件`（xlsx）+ `md派生` | 规则的字段级展开；与锁定稿冲突时以锁定稿为准 |
-
-**材料可信度**：原件（docx/xlsx/pdf）> md 派生版。V0.1 工作区内的材料与桌面原件不一致时，一律以原件为准。
-
----
-
-## 四、文档清单与状态
-
-| 编号 | 文件 | 内容 | 状态 |
-| --- | --- | --- | --- |
-| — | `README.md` | 本目录说明、工作流、依据优先级、变更控制 | v1.0 有效 |
-| 01 | `01_项目概述与目标边界_v1.0.md` | 项目目标、范围、非目标、锁定设计原则、医学红线、术语表 | v1.0 有效 |
-| 02 | `02_功能需求_v1.0.md` | FR 编号功能需求 + 验收标准 + 出处追踪 | v1.4 有效；第二轮三批已通过 Gate |
-| 03 | `03_业务规则与状态机_v1.0.md` | 状态定义（ST00–ST99）、状态出口矩阵、医学边界规则、时间规则 | v1.0 有效 |
-| 04 | `04_字段与输出模板_v1.0.md` | 最小字段（F001–F056）与自然语言输出模板（OUT-* / SYS-*） | v1.0 有效 |
-| 05 | `05_用户故事与验收标准_v1.0.md` | 用户故事、3 个锁定病例端到端脚本、交付验收标准 | v1.0 有效 |
-| 06 | `06_问题清单与裁决记录_v1.0.md` | 问题清单 + 全部裁决 + 实现约定 Q001–Q007 + 工程决策 | v1.4 有效；第二轮三批已实现 |
-| 07 | `07_技术架构与数据模型_v1.0.md` | 分层架构、数据模型、迁移、账号与审计、时间注入、依据检索、打包路线 | v1.7 有效；M6-A/B/C/D 已通过工程 Gate |
-| 08 | `08_实施计划与交付验收_v1.0.md` | 里程碑 M0–M7、任务清单、交付清单、验收门、风险 | v1.8 有效；M7 打包与分发已暂停 |
-| 09 | `09_前端体验审阅_v1.0.md` | 医生视角的前端体验问题清单与第二轮 UX-45…UX-61 审定结果 | v1.5；第二轮三批已验收 |
-| 10 | `10_UI信息层级规范提案_v1.0.md` | 信息层级决议与第二轮 UI-R1…UI-R10 审定条款 | v1.3 已审定并实施 |
-| 11 | `11_M6依据检索实施方案_v1.0.md` | M6 材料范围、导入、检索、审计、UI、测试与停止条件 | v1.5 已批准；M6-A/B/C/D 已通过工程 Gate，36 条候选待医学复核 |
-| 12 | `12_M7打包与交付实施方案_v1.0.md` | M7 便携版、材料分发、测试安全、交付文档、干净环境与停止条件 | v1.1 已暂停；等待 Lifan 重新授权 |
-
----
-
-## 五、命名与版本规则
-
-- 文档命名：`编号_内容名_v版本号.md`；禁止"最终版""修改版"等模糊名称。
-- 版本号：`vX.Y`。X 为结构级修订，Y 为内容级修订；每次修订必须更新文内"修订记录"。
-- 交付物命名：`早期T2DM缓解管理软件_内容名_版本号`（沿用任务书第十二节）。
-
----
-
-## 六、变更控制（锁定）
-
-1. **临床逻辑变更**：任何临床节点、分支、医学边界或时间阈值的增删改，必须回到《临床流程锁定稿》，由项目负责人确认并升级锁定稿版本后，再同步修订本目录 01–05 与实现表。
-2. **需求/设计变更**：先改本目录 spec，经 Lifan 评审后同步 `08` 的计划与任务；不得跳过 spec 直接改代码。
-3. **UI 变更**：唯一入口是根目录 `UI.md`，改完必须做 Token 使用率自查。
-4. **问题上报**：无法确定的内容进入 `06`，由项目负责人裁决；实现侧不得自行补充医学阈值。
-5. **一致性检查**：每次 spec 变更后，逐条核对规则 ID（E1–E5、A1）、字段 ID（F001–F056）、状态代码（ST00–ST99）、输出模板 ID（OUT-*/SYS-*）的一致性，结论写入相应文档"一致性核对"节。
-
----
-
-## 七、当前状态快照（2026-09-19，M0）
-
-- 已完成：V1.0 工程目录建立；甲方材料与三份医学依据归位；根目录 `UI.md`（Chrome / Material 3 体系）重写；`ACCESS.md` 建立。
-- 已完成：`_SPEC` 01–05 自 V0.1 继承并修订（删除首轮/低保真/工作包表述与 UI 描述）；06 合并 V0.1 的 06+08 并新增 V1.0 问题；07、08 新写。
-- 待办：Lifan 评审本目录后进入 M1（工程基线）。
+Change the applicable specifications before implementation. Do not infer new clinical decisions from code or change locked thresholds without an approved source.

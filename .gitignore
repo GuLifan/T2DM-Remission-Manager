@@ -1,46 +1,47 @@
-# ===== Python =====
+# Runtime and credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+*.log
+data/
+artifacts/
+backups/
+*.zip
+# Private source originals: configure outside Git, never expose as static files.
+resources/evidence/**
+!resources/evidence/README.md
+!resources/evidence/manifest.json
+_DEV/
+_DESIGN/
+# Dependencies and build output
+.venv/
+node_modules/
 __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
-
-# 虚拟环境：一律建在项目内，禁止提交（AGENTS 约定：不改动全局 Python 环境）
-backend/.venv/
-.venv/
-
-# ===== Node / 前端 =====
-node_modules/
+.cache/
 frontend/dist/
 *.tsbuildinfo
-
-# ===== 数据库与运行时数据（含患者数据，禁止入库）=====
-data/runtime/
-*.db
-*.db-wal
-*.db-shm
-
-# ===== 依据资料检索索引（可由脚本重建，不入库）=====
-data/evidence/index/
-
-# ===== 打包产物 =====
 build/
 dist/
 release/
-
-# ===== 编辑器与系统 =====
+tmp/
+# Local tools
 .vscode/
 .idea/
+.DS_Store
 Thumbs.db
 desktop.ini
-
-# ===== 临时文件 =====
-*.tmp
-*.log
-
-# ===== 甲方材料原件与医学依据（仅本机保留，不入库）=====
-# 决策（2026-09-20，Lifan 确认）：这些文件属项目资料，其中医学共识/指南可能涉及版权，
-# 不随代码托管上传到第三方平台。它们只在本机保留，获取方式见 _DEV/README.md 第二节。
-_DEV/甲方材料/原件/
-_DEV/医学依据/

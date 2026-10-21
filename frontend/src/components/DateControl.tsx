@@ -1,7 +1,7 @@
 /**
  * 组件名称：DateControl.tsx
  * 所属层级：通用组件（components）
- * 功能说明：在页头显示当前有效日期；测试账号可设置或清除账号级模拟日期。
+ * 功能说明：工作台显示只读日期；管理员管理区可设置或清除自己的业务日期。
  *
  * 安全说明：界面只控制入口可见性，真正的测试模式与账号权限由后端校验。
  *
@@ -11,12 +11,14 @@
 
 import { useEffect, useState } from 'react'
 
-import { ApiError } from '../api/client'
+import { ApiError, notifyDateChanged } from '../api/client'
 import { testSupportApi } from '../api/endpoints'
 import { useAsync } from '../hooks/useAsync'
 
 interface DateControlProps {
-  /** 日期修改后执行；患者工作台用它返回患者列表 */
+  /** 只有管理员管理区显式开启编辑，临床工作台保持只读。 */
+  editable?: boolean
+  /** 日期修改成功后通知调用方刷新 */
   onDateChanged?: () => void
 }
 
@@ -37,7 +39,7 @@ function parseDate(value: string): string | null {
 }
 
 /** 页头日期控件。 */
-export default function DateControl({ onDateChanged }: DateControlProps) {
+export default function DateControl({ onDateChanged, editable = false }: DateControlProps) {
   const context = useAsync((signal) => testSupportApi.context(signal), [])
   const [value, setValue] = useState('')
   const [error, setError] = useState('')
@@ -47,7 +49,7 @@ export default function DateControl({ onDateChanged }: DateControlProps) {
     if (context.data) setValue(displayDate(context.data.effective_date))
   }, [context.data])
 
-  /** 保存模拟日期并通知页面返回患者列表。 */
+  /** 保存管理员业务日期并通知调用方刷新。 */
   async function applyDate() {
     const parsed = parseDate(value)
     if (!parsed) {
@@ -58,21 +60,23 @@ export default function DateControl({ onDateChanged }: DateControlProps) {
     setError('')
     try {
       await testSupportApi.setSimulatedDate(parsed)
+      notifyDateChanged()
       context.reload()
       onDateChanged?.()
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '设置模拟日期失败，请重试。')
+      setError(caught instanceof ApiError ? caught.message : '设置业务日期失败，请重试。')
     } finally {
       setSaving(false)
     }
   }
 
-  /** 清除模拟日期并恢复读取本机真实日期。 */
+  /** 清除管理员日期覆盖并恢复读取系统日期。 */
   async function restoreRealDate() {
     setSaving(true)
     setError('')
     try {
       await testSupportApi.setSimulatedDate(null)
+      notifyDateChanged()
       context.reload()
       onDateChanged?.()
     } catch (caught) {
@@ -92,11 +96,11 @@ export default function DateControl({ onDateChanged }: DateControlProps) {
   const loaded = context.data
   return (
     <div className={`date-control${loaded.simulated_date ? ' date-control--simulated' : ''}`}>
-      {loaded.simulated_date ? <span className="date-control__warning">正在使用模拟日期</span> : null}
-      {loaded.can_use_test_tools ? (
+      {editable && loaded.can_manage_date ? (
         <>
+          <span>系统日期：{displayDate(loaded.real_date)}</span>
           <label className="date-control__label" htmlFor="effective-date">
-            当前日期
+            业务日期
           </label>
           <input
             className="date-control__input num"
@@ -112,7 +116,7 @@ export default function DateControl({ onDateChanged }: DateControlProps) {
           </button>
           {loaded.simulated_date ? (
             <button type="button" className="btn btn--text" disabled={saving} onClick={restoreRealDate}>
-              恢复真实日期
+              使用系统日期
             </button>
           ) : null}
         </>

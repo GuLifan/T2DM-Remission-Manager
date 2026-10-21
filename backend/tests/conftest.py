@@ -23,6 +23,8 @@ from pathlib import Path
 _TEST_DATA_DIR = Path(tempfile.mkdtemp(prefix="etmms-test-"))
 os.environ["ETMMS_DATA_DIR"] = str(_TEST_DATA_DIR)
 os.environ["ETMMS_LOG_LEVEL"] = "WARNING"
+# 历史测试保留旧接口行为；新增 demo 验收夹具显式打开新边界。
+os.environ["ETMMS_DEMO_MODE"] = "false"
 
 # 保证 backend 目录在 sys.path 中（便于直接运行 pytest）
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

@@ -61,6 +61,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     # 测试后门总开关：默认关闭，交付环境不得开启
     test_mode: bool = False
+    # 独立 demo 默认启用隔离测试；历史回归可通过环境变量关闭，仅限测试进程。
+    demo_mode: bool = True
     # 数据目录：数据库与日志的落盘位置
     data_dir: Path = Field(default_factory=default_data_dir)
     db_filename: str = "etmms.db"

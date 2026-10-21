@@ -97,12 +97,20 @@ def transfer_owner(db: Session, patient: Patient, owner_id: int) -> None:
     db.flush()
 
 
+def update_height(db: Session, patient: Patient, *, height_cm: float, bmi: float | None) -> None:
+    """管理员更正患者当前身高与 BMI；历史事件载荷不在此仓储中修改。"""
+    patient.height_cm = height_cm
+    patient.bmi = bmi
+    db.flush()
+
+
 def apply_outcome(
     db: Session,
     patient: Patient,
     *,
     target_state: str,
     updates: dict[str, object] | None = None,
+    transition_ids: list[str] | None = None,
 ) -> None:
     """把一次决策的结果落到患者档案上。
 
@@ -120,7 +128,25 @@ def apply_outcome(
             last_med_stop_date、earliest_judge_date、has_glucose_lowering_drug 等）。
             **显式传入 None 表示把该字段清空**，这与会话细节一致。
     """
-    validate_transition(patient.current_state, target_state)
+    if transition_ids is None:
+        # 旧契约独立保留，v0.3补充出口不通过旧表自动开放。
+        validate_transition(patient.current_state, target_state)
+    else:
+        from app.domain.clinical_v03 import TRANSITIONS_BY_ID, require_transition
+
+        cursor = patient.current_state
+        for transition_id in transition_ids:
+            item = TRANSITIONS_BY_ID.get(transition_id)
+            next_state = item.target if item else ""
+            require_transition(transition_id, cursor, next_state)
+            cursor = next_state
+        if not transition_ids or cursor != target_state:
+            from app.core.exceptions import BusinessRuleError
+
+            raise BusinessRuleError("本次流程核对不一致，请刷新后重试。", code="V03_TRANSITION_MISMATCH")
+    # 显式标记一次业务版本：SQLAlchemy生成WHERE旧版本的条件UPDATE，
+    # 同值决定也不能跳过UPDATE；并发另一会话已推进时flush抛StaleDataError。
+    patient.clinical_revision += 1
     patient.current_state = target_state
     for field_name, value in (updates or {}).items():
         # 只允许更新 Patient 上真实存在的字段，避免拼错字段名被静默忽略

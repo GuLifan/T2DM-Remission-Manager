@@ -22,16 +22,19 @@ from app.api.dependencies import get_current_user
 from app.api.flow_common import (
     get_patient_or_404,
     patient_out,
+    require_admin,
     require_patient_write_access,
 )
 from app.config import get_settings
 from app.core.clock import system_clock
 from app.core.exceptions import BusinessRuleError, ConflictError
 from app.core.test_mode import (
+    date_management_enabled,
     effective_today,
     effective_today_for_patient,
     require_test_account,
     require_test_patient,
+    simulated_date_for_event,
     test_capability_enabled,
 )
 from app.domain import enums
@@ -50,11 +53,12 @@ router = APIRouter(tags=["测试支持"])
 def _context(user: User) -> TestContextOut:
     """构造当前账号的测试能力与日期上下文。"""
     return TestContextOut(
-        test_mode_enabled=get_settings().test_mode,
+        test_mode_enabled=get_settings().test_mode or get_settings().demo_mode,
         can_use_test_tools=test_capability_enabled(user),
+        can_manage_date=date_management_enabled(user),
         real_date=system_clock.today(),
         effective_date=effective_today(user),
-        simulated_date=user.simulated_date if test_capability_enabled(user) else None,
+        simulated_date=user.simulated_date if date_management_enabled(user) else None,
     )
 
 
@@ -72,6 +76,7 @@ def set_simulated_date(
 ) -> TestContextOut:
     """设置或清除当前测试账号的持久化模拟日期。"""
     require_test_account(current_user)
+    require_admin(current_user)
     users_repo.set_simulated_date(db, current_user, payload.simulated_date)
     audit_repo.write_audit(
         db,
@@ -131,6 +136,7 @@ def debug_jump_state(
     if target_state == ST60 and patient.remission_confirmed_date is None:
         patient.remission_confirmed_date = today
 
+    event_date = simulated_date_for_event(current_user, patient)
     output_text = f"测试模式：已切换至“{state_name(target_state)}”。本记录不属于正式临床流程。"
     events_repo.add_event(
         db,
@@ -144,7 +150,7 @@ def debug_jump_state(
         output_text=output_text,
         payload={"target_state": target_state},
         request_id=payload.request_id,
-        simulated_date=current_user.simulated_date,
+        simulated_date=event_date,
     )
     audit_repo.write_audit(
         db,
@@ -155,8 +161,8 @@ def debug_jump_state(
         detail={
             "source_state": source_state,
             "target_state": target_state,
-            "simulated_date": current_user.simulated_date.isoformat()
-            if current_user.simulated_date
+            "simulated_date": event_date.isoformat()
+            if event_date
             else None,
         },
     )

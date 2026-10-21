@@ -9,6 +9,8 @@ interface NumericInputProps {
   max?: number
   step?: number
   disabled?: boolean
+  required?: boolean
+  readOnly?: boolean
 }
 
 export default function NumericInput({ unit, onChange, ...props }: NumericInputProps) {

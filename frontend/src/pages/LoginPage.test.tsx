@@ -61,7 +61,7 @@ describe('LoginPage', () => {
     expect(await screen.findByText(/首次使用/)).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('登录名'), 'doctor')
-    await user.type(screen.getByLabelText('界面显示姓名'), '张医生')
+    await user.type(screen.getByLabelText('显示姓名'), '张医生')
     await user.type(screen.getByLabelText('密码'), 'Test-Passw0rd')
     await user.click(screen.getByRole('button', { name: /创建账号并进入系统/ }))
 
@@ -79,7 +79,7 @@ describe('LoginPage', () => {
     await screen.findByText(/首次使用/)
 
     await user.type(screen.getByLabelText('登录名'), 'doctor')
-    await user.type(screen.getByLabelText('界面显示姓名'), '张医生')
+    await user.type(screen.getByLabelText('显示姓名'), '张医生')
     await user.type(screen.getByLabelText('密码'), 'short')
     await user.click(screen.getByRole('button', { name: /创建账号并进入系统/ }))
 
@@ -108,7 +108,8 @@ describe('LoginPage', () => {
     await screen.findByText('请使用医生账号登录。')
     await user.click(screen.getByRole('button', { name: '注册医生账号' }))
     await user.type(screen.getByLabelText('登录名'), 'new_doctor')
-    await user.type(screen.getByLabelText('界面显示姓名'), '李医生')
+    await user.type(screen.getByLabelText('显示姓名'), '李医生')
+    await user.type(screen.getByLabelText('邀请码'), 'synthetic-invite')
     await user.selectOptions(await screen.findByLabelText('所属科室'), '内分泌科')
     await user.type(screen.getByLabelText('密码'), 'Register-Passw0rd')
     await user.type(screen.getByLabelText('再次输入密码'), 'Register-Passw0rd')

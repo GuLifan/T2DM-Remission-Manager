@@ -43,7 +43,7 @@ describe('DateControl 当前日期', () => {
     expect(screen.queryByRole('button', { name: '应用日期' })).not.toBeInTheDocument()
   })
 
-  it('测试账号可保存模拟日期，并通知工作台返回患者列表', async () => {
+  it('管理员管理区可保存业务日期，并触发刷新', async () => {
     const onDateChanged = vi.fn()
     const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
       if (init?.method === 'POST') {
@@ -51,6 +51,7 @@ describe('DateControl 当前日期', () => {
           jsonOk({
             test_mode_enabled: true,
             can_use_test_tools: true,
+            can_manage_date: true,
             real_date: '2026-09-24',
             effective_date: '2030-01-02',
             simulated_date: '2030-01-02',
@@ -61,6 +62,7 @@ describe('DateControl 当前日期', () => {
         jsonOk({
           test_mode_enabled: true,
           can_use_test_tools: true,
+            can_manage_date: true,
           real_date: '2026-09-24',
           effective_date: '2026-09-24',
           simulated_date: null,
@@ -69,9 +71,9 @@ describe('DateControl 当前日期', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
     const user = userEvent.setup()
-    render(<DateControl onDateChanged={onDateChanged} />)
+    render(<DateControl editable onDateChanged={onDateChanged} />)
 
-    const input = await screen.findByLabelText('当前日期')
+    const input = await screen.findByLabelText('业务日期')
     await waitFor(() => expect(input).toHaveValue('2026/09/24'))
     await user.clear(input)
     await user.type(input, '2030/01/02')

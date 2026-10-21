@@ -8,3 +8,7 @@
  */
 
 import '@testing-library/jest-dom/vitest'
+
+// Windows受限环境的异步渲染较慢；延长等待但保留全部交互断言。
+import { configure } from '@testing-library/react'
+configure({ asyncUtilTimeout: 5000 })

@@ -320,6 +320,7 @@
   font-size: var(--etmms-text-label);
   font-weight: var(--etmms-weight-medium);
   color: var(--etmms-on-surface);
+  white-space: nowrap;
 }
 
 .settings-row__description {
@@ -346,6 +347,7 @@
 .field-row__label {
   font-size: var(--etmms-text-label);
   font-weight: var(--etmms-weight-medium);
+  white-space: nowrap;
 }
 
 .field-row__hint {
@@ -466,6 +468,7 @@
   font-weight: var(--etmms-weight-medium);
   padding: 0;
   margin-bottom: var(--etmms-space-2);
+  white-space: nowrap;
 }
 
 .choice-group__item {

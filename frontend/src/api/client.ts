@@ -27,6 +27,19 @@ export class ApiError extends Error {
 
 const TOKEN_KEY = 'etmms.token'
 const DEFAULT_TIMEOUT_MS = 15_000
+export const SESSION_CHANGED = 'etmms:session-changed'
+export const DATE_CHANGED = 'etmms:date-changed'
+const DATE_KEY = 'etmms.date-generation'
+// token属于当前已核实的页面身份；绝不在旧页面临时取另一个标签的新凭据提交。
+let boundToken: string | null = window.localStorage.getItem(TOKEN_KEY)
+export function notifyDateChanged(): void {
+  window.localStorage.setItem(DATE_KEY, newRequestId('date'))
+  window.dispatchEvent(new Event(DATE_CHANGED))
+}
+window.addEventListener('storage', event => {
+  if (event.key === TOKEN_KEY || event.key === null) window.dispatchEvent(new Event(SESSION_CHANGED))
+  if (event.key === DATE_KEY || event.key === null) window.dispatchEvent(new Event(DATE_CHANGED))
+})
 
 /** 会话令牌读写（localStorage）。 */
 export const session = {
@@ -39,9 +52,12 @@ export const session = {
     } else {
       window.localStorage.setItem(TOKEN_KEY, value)
     }
+    window.dispatchEvent(new Event(SESSION_CHANGED))
   },
+  bind(value: string | null): void { boundToken = value },
   clear(): void {
     window.localStorage.removeItem(TOKEN_KEY)
+    window.dispatchEvent(new Event(SESSION_CHANGED))
   },
 }
 
@@ -56,6 +72,7 @@ export function newRequestId(prefix: string): string {
 }
 
 interface RequestOptions {
+  responseType?: 'blob'
   method?: string
   body?: unknown
   /** 外部取消信号（组件卸载时使用） */
@@ -73,6 +90,12 @@ interface RequestOptions {
  * @throws ApiError 非 2xx 响应；网络错误与超时也转换为 ApiError（提示为自然语言）
  */
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const token = session.token
+  const authRequest = path.startsWith('/api/auth/')
+  if (!authRequest && token !== boundToken) {
+    window.dispatchEvent(new Event(SESSION_CHANGED))
+    throw new ApiError(409, '登录账号已变化，请重新核对身份后操作。')
+  }
   const controller = new AbortController()
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   // 超时保护：到点自动中止，避免界面无限等待
@@ -86,7 +109,6 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   // FormData 必须让浏览器自行生成 multipart boundary；JSON 请求才显式声明类型。
   const isFormData = options.body instanceof FormData
   const headers: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' }
-  const token = session.token
   if (token) headers.Authorization = `Bearer ${token}`
 
   let response: Response
@@ -112,6 +134,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     window.clearTimeout(timer)
   }
 
+  // 迟到的旧响应不能污染后来登录的身份，尤其旧401不能把新token清掉。
+  if (session.token !== token) throw new ApiError(409, '登录账号已变化，已忽略原会话响应。')
   if (!response.ok) {
     let message = `请求失败（状态码 ${response.status}）`
     try {
@@ -126,11 +150,18 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   if (response.status === 204) return {} as T
+  if (options.responseType === 'blob') {
+    const blob = await response.blob()
+    if (session.token !== token) throw new ApiError(409, '登录账号已变化，已忽略原会话响应。')
+    return blob as T
+  }
   const text = await response.text()
+  if (session.token !== token) throw new ApiError(409, '登录账号已变化，已忽略原会话响应。')
   return (text ? JSON.parse(text) : {}) as T
 }
 
 export const api = {
+  blob: (path: string) => request<Blob>(path, {responseType: 'blob'}),
   get: <T>(path: string, signal?: AbortSignal) => request<T>(path, { signal }),
   post: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
     request<T>(path, { method: 'POST', body, signal }),

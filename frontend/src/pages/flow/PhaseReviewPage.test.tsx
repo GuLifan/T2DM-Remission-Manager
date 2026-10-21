@@ -1,5 +1,5 @@
 /**
- * 页面测试：第三批阶段复评测量值默认带入，清空后由后端沿用旧快照。
+ * 页面测试：第四批阶段复评必须重新录入体重，已确认身高保持只读。
  */
 
 import { render, screen, waitFor } from '@testing-library/react'
@@ -38,6 +38,14 @@ const PATIENT: Patient = {
   remission_confirmed_date: null,
   has_glucose_lowering_drug: false,
   drug_purpose: null,
+  clinical_contract_version: 'v1.0',
+  clinical_revision: 1,
+  observation_status: 'none',
+  observation_cycle: 0,
+  applicable_interventions: null,
+  actual_stop_confirmed: null,
+  current_remission_evaluation: null,
+  objective_assessment_event_id: null,
   created_at: '2026-09-01T09:00:00',
   updated_at: '2026-09-24T09:00:00',
 }
@@ -52,7 +60,7 @@ function jsonOk(body: unknown): Response {
 describe('PhaseReviewPage 测量快照', () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it('默认带入最新身高体重，清空字段时提交 null 表示沿用旧值', async () => {
+  it('不沿用旧体重，缺少本次体重时阻止提交，补录后提交新快照', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url.includes('/api/domain/branches')) {
@@ -86,19 +94,25 @@ describe('PhaseReviewPage 测量快照', () => {
     render(<PhaseReviewPage patient={PATIENT} onUpdated={vi.fn()} />)
 
     const weight = await screen.findByLabelText('本次体重')
-    const height = screen.getByLabelText('本次身高')
-    expect(weight).toHaveValue(70)
+    const height = screen.getByLabelText('身高')
+    expect(weight).toHaveValue(null)
+    expect(weight).toBeRequired()
     expect(height).toHaveValue(175)
-    expect(screen.getByText(/当前 BMI：22.9/)).toBeInTheDocument()
+    expect(height).toHaveAttribute('readonly')
+    expect(screen.getByText(/上次 BMI：22.9/)).toBeInTheDocument()
 
-    await user.clear(weight)
+    await user.click(screen.getByRole('button', { name: '记录复评结论' }))
+    expect(await screen.findByText('请填写本次体重。')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/phase-review'))).toBe(false)
+
+    await user.type(weight, '71')
     await user.click(screen.getByRole('button', { name: '记录复评结论' }))
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(([input]) => String(input).includes('/phase-review'))
       expect(call).toBeDefined()
       const body = JSON.parse(String(call?.[1]?.body))
-      expect(body.f018_weight).toBeNull()
-      expect(body.f019_height).toBe(175)
+      expect(body.f018_weight).toBe(71)
+      expect(body.f019_height).toBeNull()
     })
   })
 })

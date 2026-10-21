@@ -31,6 +31,7 @@ def run_migrations() -> None:
     # 数据库目录必须先存在，否则 Alembic 连接会失败
     settings.ensure_dirs()
     config = Config(str(BACKEND_DIR / "alembic.ini"))
+    config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
     # 显式传入连接串：避免 alembic.ini 中硬编码路径，便于便携版切换数据目录
     config.set_main_option("sqlalchemy.url", settings.database_url)
     logger.info("执行数据库迁移：%s", settings.db_path)

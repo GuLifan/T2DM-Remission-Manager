@@ -18,6 +18,7 @@ import { useState } from 'react'
 import { ApiError } from '../../api/client'
 import { flowApi } from '../../api/endpoints'
 import {
+  AssessmentMeasurementFields,
   CheckboxGroup,
   ErrorBanner,
   FieldRow,
@@ -62,7 +63,7 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
   // 机会信息（不阻断）
   const [durationYears, setDurationYears] = useState('')
   const [durationMonths, setDurationMonths] = useState('0')
-  const [weight, setWeight] = useState(patient.weight_kg?.toString() ?? '')
+  const [weight, setWeight] = useState('')
   const [height, setHeight] = useState(patient.height_cm?.toString() ?? '')
   const [glucoseHint, setGlucoseHint] = useState('')
   const [insulin, setInsulin] = useState('')
@@ -72,14 +73,21 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
   // 急性安全稳定化后的快速建档
   const [acuteGoal, setAcuteGoal] = useState('安全改善明显高血糖')
   const [acuteInterventions, setAcuteInterventions] = useState<string[]>(['结构化生活方式'])
+  const [acuteWeight, setAcuteWeight] = useState('')
+  const [acuteHeight, setAcuteHeight] = useState(patient.height_cm?.toString() ?? '')
 
   const [result, setResult] = useState<PreAssessmentResult | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const bmi = weight && height ? Number(weight) / ((Number(height) / 100) ** 2) : null
+  const effectiveHeight = patient.height_cm == null ? height : String(patient.height_cm)
+  const bmi = weight && effectiveHeight ? Number(weight) / ((Number(effectiveHeight) / 100) ** 2) : null
 
   /** 提交预评估。 */
   async function handleSubmit() {
+    if (!weight || (patient.height_cm == null && !height)) {
+      setError(patient.height_cm == null ? '请填写本次体重和患者身高。' : '请填写本次体重。')
+      return
+    }
     setError('')
     setSubmitting(true)
     try {
@@ -97,7 +105,7 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
         f006_duration_months: Number(durationMonths || 0),
         f007_bmi_hint: bmi && Number.isFinite(bmi) ? `BMI ${bmi.toFixed(1)}` : null,
         f018_weight: weight === '' ? null : Number(weight),
-        f019_height: height === '' ? null : Number(height),
+        f019_height: patient.height_cm == null && height !== '' ? Number(height) : null,
         f008_glucose_status: glucoseHint || null,
         f009_insulin: insulin || null,
         f010_demands: demands,
@@ -114,10 +122,16 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
 
   /** 急性安全稳定化后快速建档：直接进入血糖稳定阶段。 */
   async function handleAcuteStabilized() {
+    if (!acuteWeight || (patient.height_cm == null && !acuteHeight)) {
+      setError(patient.height_cm == null ? '请填写本次体重和患者身高。' : '请填写本次体重。')
+      return
+    }
     setError('')
     setSubmitting(true)
     try {
       await flowApi.acuteStabilized(patient.id, {
+        f018_weight: Number(acuteWeight),
+        f019_height: patient.height_cm == null && acuteHeight !== '' ? Number(acuteHeight) : null,
         stage_goal: acuteGoal,
         interventions: acuteInterventions,
       })
@@ -158,7 +172,7 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
           {error ? <ErrorBanner message={error} /> : null}
 
           <div className="form-grid">
-            <FieldRow label="成人T2DM判断是否基本成立">
+            <FieldRow label="成人 T2DM" hint="判断成人 2 型糖尿病诊断是否基本成立。">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -172,7 +186,7 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
                 </select>
               )}
             </FieldRow>
-            <FieldRow label="当前是否存在急性不安全状态">
+            <FieldRow label="急性不安全状态">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -186,7 +200,7 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
               )}
             </FieldRow>
             <FieldRow
-              label="是否存在明显分型疑点"
+              label="分型疑点"
               hint="BMI 正常、使用胰岛素或 C 肽缺失本身不能自动判为分型疑点。"
             >
               {(fieldProps) => (
@@ -201,7 +215,7 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
                 </select>
               )}
             </FieldRow>
-            <FieldRow label="当前治疗背景是否足以判断">
+            <FieldRow label="治疗背景" hint="判断当前治疗背景是否足以支持本次评估。">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -214,7 +228,7 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
                 </select>
               )}
             </FieldRow>
-            <FieldRow label="患者是否明确拒绝进一步了解或参与">
+            <FieldRow label="参与意愿" hint="患者是否明确拒绝进一步了解或参与。">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -239,19 +253,13 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
                 </div>
               )}
             </FieldRow>
-            <FieldRow label="体重">
-              {(fieldProps) => (
-                <NumericInput {...fieldProps} value={weight} onChange={setWeight} unit="kg" min={0.1} max={500} step={0.1} />
-              )}
-            </FieldRow>
-            <FieldRow label="身高">
-              {(fieldProps) => (
-                <NumericInput {...fieldProps} value={height} onChange={setHeight} unit="cm" min={50} max={250} step={0.1} />
-              )}
-            </FieldRow>
-            <FieldRow label="BMI" hint="系统按本次身高与体重计算，仅作记录，不参与准入判断。">
-              {(fieldProps) => <input {...fieldProps} className="input num" readOnly value={bmi && Number.isFinite(bmi) ? bmi.toFixed(1) : ''} />}
-            </FieldRow>
+            <AssessmentMeasurementFields
+              patient={patient}
+              weight={weight}
+              onWeightChange={setWeight}
+              height={height}
+              onHeightChange={setHeight}
+            />
             <FieldRow label="近期血糖状态">
               {(fieldProps) => (
                 <input
@@ -263,7 +271,7 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
                 />
               )}
             </FieldRow>
-            <FieldRow label="当前胰岛素使用背景">
+            <FieldRow label="胰岛素使用">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -283,7 +291,7 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
           </div>
 
           <SettingsRow
-            label="患者诉求（可多选）"
+            label="患者诉求"
             stacked
             control={
               <CheckboxGroup
@@ -319,7 +327,7 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
               <p className="section__description">
                 医生确认已稳定化时，可直接进入血糖稳定阶段（快速建档，不重复预评估与完整评估）。
               </p>
-              <FieldRow label="一个主要阶段目标">
+              <FieldRow label="阶段目标">
                 {(fieldProps) => (
                   <input
                     {...fieldProps}
@@ -329,6 +337,15 @@ export default function PreAssessmentPage({ patient, onUpdated }: FlowPageProps)
                   />
                 )}
               </FieldRow>
+              <div className="form-grid">
+                <AssessmentMeasurementFields
+                  patient={patient}
+                  weight={acuteWeight}
+                  onWeightChange={setAcuteWeight}
+                  height={acuteHeight}
+                  onHeightChange={setAcuteHeight}
+                />
+              </div>
               <CheckboxGroup
                 legend="干预组合（可组合）"
                 values={acuteInterventions}

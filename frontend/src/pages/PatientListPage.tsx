@@ -1,370 +1,98 @@
-/**
- * 页面名称：PatientListPage.tsx
- * 所属层级：页面组件（pages）
- * 功能说明：患者列表与建档。建档成功后进入患者工作台继续完成预评估。
- *
- * 交互要点：
- *   - 表单提交前就地校验（姓名、住院号、出生年月、当前科室必填）；
- *   - 住院号重复由后端给出自然语言提示，直接展示；
- *   - 列表为空时给出空态与明确动作。
- *
- * 修改历史：
- *   - 2026-09-20  v1.0  M5 初始实现
- */
-
+/** 患者工作台：个人进度、归档记录、场景创建及重置。 */
 import { useMemo, useState } from 'react'
-
-import { ApiError } from '../api/client'
+import { api } from '../api/client'
 import { domainApi, patientApi, referenceApi, testSupportApi } from '../api/endpoints'
-import {
-  DateControl,
-  EmptyState,
-  ErrorBanner,
-  FieldRow,
-  ImportDialog,
-  LoadingBlock,
-  PageHeader,
-  StatusBadge,
-  YearMonthInput,
-} from '../components'
+import { ConfirmDialog, DateControl, EmptyState, ErrorBanner, FieldRow, LoadingBlock, PageHeader, StatusBadge, YearMonthInput } from '../components'
 import { useAsync } from '../hooks/useAsync'
+import { patientNumber } from '../presentation'
 import type { Patient, UserOut } from '../types'
-
-interface PatientListPageProps {
-  /** 当前登录医生 */
-  currentUser: UserOut
-  /** 打开某位患者的工作台 */
-  onOpenPatient: (patientId: number) => void
-  /** 退出登录 */
-  onLogout: () => void
-}
-
-type SortKey = 'name' | 'medical_record_no' | 'updated_at' | 'next_review_date' | 'current_state'
-type SortDirection = 'asc' | 'desc'
-type DueState = 'overdue' | 'today' | 'future' | 'none'
-
-const DUE_RANK: Record<DueState, number> = { overdue: 0, today: 1, future: 2, none: 3 }
-
-/** 取本机自然日，避免 UTC 转换把中国时区日期回退一天。 */
-function localIsoDate(): string {
-  const now = new Date()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${month}-${day}`
-}
-
-export function dueState(patient: Patient, effectiveToday: string): DueState {
+interface Props { currentUser: UserOut; onOpenPatient: (id: number) => void; onLogout: () => void }
+export function dueState(patient: Patient, today: string): 'overdue' | 'today' | 'future' | 'none' {
   if (!patient.next_review_date) return 'none'
-  if (patient.next_review_date < effectiveToday) return 'overdue'
-  if (patient.next_review_date === effectiveToday) return 'today'
-  return 'future'
+  return patient.next_review_date < today ? 'overdue' : patient.next_review_date === today ? 'today' : 'future'
 }
-
-function compareText(left: string, right: string): number {
-  return left.localeCompare(right, 'zh-CN', { numeric: true, sensitivity: 'base' })
-}
-
-interface SortableHeaderProps {
-  label: string
-  field: SortKey
-  active: { key: SortKey; direction: SortDirection } | null
-  onSort: (field: SortKey) => void
-}
-
-function SortableHeader({ label, field, active, onSort }: SortableHeaderProps) {
-  const direction = active?.key === field ? active.direction : null
-  return (
-    <th aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
-      <button type="button" className="table-sort" onClick={() => onSort(field)}>
-        {label}<span aria-hidden="true">{direction === 'asc' ? ' ↑' : direction === 'desc' ? ' ↓' : ' ↕'}</span>
-      </button>
-    </th>
-  )
-}
-
-/** 患者列表 + 建档。 */
-export default function PatientListPage({ currentUser, onOpenPatient, onLogout }: PatientListPageProps) {
+export default function PatientListPage({currentUser, onOpenPatient, onLogout}: Props) {
   const patients = useAsync((signal) => patientApi.list(signal), [])
   const states = useAsync((signal) => domainApi.states(signal), [])
+  const context = useAsync((signal) => testSupportApi.context(signal), [])
   const references = useAsync((signal) => referenceApi.get(signal), [])
-  const testContext = useAsync((signal) => testSupportApi.context(signal), [])
+  const [query, setQuery] = useState('')
+  const [history, setHistory] = useState(false)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [resetPatient, setResetPatient] = useState<Patient | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
   const [name, setName] = useState('')
-  const [gender, setGender] = useState<'男' | '女'>('女')
+  const [gender, setGender] = useState('')
   const [birthYear, setBirthYear] = useState('')
   const [birthMonth, setBirthMonth] = useState('')
-  const [medicalRecordNo, setMedicalRecordNo] = useState('')
   const [department, setDepartment] = useState('内分泌科')
-  const [contactPhone, setContactPhone] = useState('')
-  const [importOpen, setImportOpen] = useState(false)
-  const [error, setError] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [query, setQuery] = useState('')
-  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection } | null>(null)
-
-  /**
-   * 患者列表必须显示“当前状态”，不能用仅适用于主动管理期的 stage 字段代替。
-   * 状态中文名继续来自后端领域表，避免在前端复制一份临床状态映射。
-   */
-  const stateNames = useMemo(
-    () => new Map((states.data ?? []).map((state) => [state.code, state.name])),
-    [states.data],
-  )
-  const effectiveToday = testContext.data?.effective_date ?? localIsoDate()
-
-  /** 搜索与排序仅作用于一次加载到前端的完整列表；本批明确不分页。 */
-  const visiblePatients = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase('zh-CN')
-    const filtered = (patients.data ?? []).filter((patient) => {
-      if (!normalizedQuery) return true
-      return (
-        patient.name.toLocaleLowerCase('zh-CN').includes(normalizedQuery) ||
-        patient.medical_record_no.toLocaleLowerCase('zh-CN').includes(normalizedQuery)
-      )
-    })
-    return [...filtered].sort((left, right) => {
-      if (!sort) {
-        const dueDifference = DUE_RANK[dueState(left, effectiveToday)] - DUE_RANK[dueState(right, effectiveToday)]
-        if (dueDifference !== 0) return dueDifference
-        return right.updated_at.localeCompare(left.updated_at)
-      }
-      const leftValue = sort.key === 'current_state'
-        ? stateNames.get(left.current_state) ?? ''
-        : left[sort.key] ?? ''
-      const rightValue = sort.key === 'current_state'
-        ? stateNames.get(right.current_state) ?? ''
-        : right[sort.key] ?? ''
-      // 空复评日期始终放在末尾，避免降序时“无日期”跑到最前。
-      if (sort.key === 'next_review_date') {
-        if (!leftValue && rightValue) return 1
-        if (leftValue && !rightValue) return -1
-      }
-      const compared = compareText(String(leftValue), String(rightValue))
-      return sort.direction === 'asc' ? compared : -compared
-    })
-  }, [effectiveToday, patients.data, query, sort, stateNames])
-
-  function toggleSort(key: SortKey) {
-    setSort((current) => ({
-      key,
-      direction: current?.key === key && current.direction === 'asc' ? 'desc' : 'asc',
-    }))
+  const [sort, setSort] = useState<'updated' | 'name' | 'date'>('updated')
+  const names = new Map(states.data?.map((s) => [s.code, s.name]))
+  const visible = useMemo(() => (patients.data ?? [])
+    .filter((p) => !!p.archived === history && `${p.name} ${patientNumber(p)} ${p.owner_display_name ?? ''}`.includes(query.trim()))
+    .sort((a,b) => sort === 'name' ? a.name.localeCompare(b.name, 'zh-CN') : sort === 'date'
+      ? (a.next_review_date ?? '9999').localeCompare(b.next_review_date ?? '9999') : b.updated_at.localeCompare(a.updated_at)),
+    [patients.data, query, history, sort])
+  async function run(action: () => Promise<Patient>) {
+    setBusy(true); setError('')
+    try { const value = await action(); patients.reload(); onOpenPatient(value.id) }
+    catch (e) { setError(e instanceof Error ? e.message : '操作失败，请重试。') }
+    finally { setBusy(false) }
   }
-
-  /** 建立患者档案并进入工作台。 */
-  async function handleCreate() {
-    setError('')
-    if (!name.trim() || !medicalRecordNo.trim() || !birthYear || !birthMonth || !department) {
-      setError('请填写姓名、出生年月、住院号和当前科室。')
+  async function createCase() {
+    if (!name.trim() || !gender || !birthYear || !birthMonth || !department) {
+      setError('请填写姓名、性别、出生年月和科室。')
       return
     }
-    setCreating(true)
-    try {
-      const created: Patient = await patientApi.create({
-        name: name.trim(),
-        gender,
-        birth_date: `${birthYear}-${birthMonth.padStart(2, '0')}-01`,
-        medical_record_no: medicalRecordNo.trim(),
-        department,
-        contact_phone: contactPhone.trim() || null,
-      })
-      onOpenPatient(created.id)
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : '建立患者档案失败，请重试。')
-    } finally {
-      setCreating(false)
-    }
+    await run(() => api.post<Patient>('/api/demo/cases', {
+      name: name.trim(), gender, birth_date: `${birthYear}-${birthMonth.padStart(2, '0')}-01`, department,
+    }))
   }
-
-  return (
-    <div className="page">
-      <PageHeader
-        title="患者管理"
-        context={`当前医生：${currentUser.display_name}`}
-        actions={
-          <>
-            <DateControl onDateChanged={testContext.reload} />
-            <button type="button" className="btn btn--text" onClick={onLogout}>
-              退出登录
-            </button>
-          </>
-        }
-      />
-
-      <div className="page__body">
-        <section className="section">
-          <div className="section-heading">
-            <h2 className="section__title">建立患者档案</h2>
-            <button type="button" className="btn btn--outlined" onClick={() => setImportOpen(true)}>
-              从表格批量导入
-            </button>
-          </div>
-          <p className="section__description">
-            建档后患者进入常规糖尿病综合管理，可由医生发起 60 秒缓解预评估。
-          </p>
-          <div className="card">
-            {error ? <ErrorBanner message={error} /> : null}
-            <div className="form-grid">
-              <FieldRow label="姓名">
-                {(fieldProps) => (
-                  <input
-                    {...fieldProps}
-                    className="input"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                  />
-                )}
-              </FieldRow>
-              <FieldRow label="住院号" hint="同一住院号不可重复建档。">
-                {(fieldProps) => (
-                  <input
-                    {...fieldProps}
-                    className="input"
-                    value={medicalRecordNo}
-                    onChange={(event) => setMedicalRecordNo(event.target.value)}
-                  />
-                )}
-              </FieldRow>
-              <FieldRow label="性别">
-                {(fieldProps) => (
-                  <select
-                    {...fieldProps}
-                    className="select"
-                    value={gender}
-                    onChange={(event) => setGender(event.target.value as '男' | '女')}
-                  >
-                    <option value="女">女</option>
-                    <option value="男">男</option>
-                  </select>
-                )}
-              </FieldRow>
-              <FieldRow label="出生年月" hint="系统仅记录到月，日固定为 1。">
-                {(fieldProps) => (
-                  <YearMonthInput
-                    {...fieldProps}
-                    year={birthYear}
-                    month={birthMonth}
-                    onYearChange={setBirthYear}
-                    onMonthChange={setBirthMonth}
-                  />
-                )}
-              </FieldRow>
-              <FieldRow label="当前科室">
-                {(fieldProps) => (
-                  <select {...fieldProps} className="select" value={department} onChange={(event) => setDepartment(event.target.value)}>
-                    {(references.data?.departments ?? ['内分泌科']).map((item) => <option key={item} value={item}>{item}</option>)}
-                  </select>
-                )}
-              </FieldRow>
-              <FieldRow label="联系方式" hint="选填；请填写院内允许记录的联系方式。">
-                {(fieldProps) => (
-                  <input {...fieldProps} className="input num" value={contactPhone} onChange={(event) => setContactPhone(event.target.value)} />
-                )}
-              </FieldRow>
-            </div>
-            <div className="page__actions">
-              <button type="button" className="btn btn--primary" disabled={creating} onClick={handleCreate}>
-                {creating ? '正在建档…' : '建立患者档案'}
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="section">
-          <div className="section-heading">
-            <div>
-              <h2 className="section__title">患者列表</h2>
-              <p className="section__description">
-                共 {patients.data?.length ?? 0} 位患者{query.trim() ? `，当前显示 ${visiblePatients.length} 位` : ''}。
-              </p>
-            </div>
-            <label className="patient-search">
-              <span className="sr-only">搜索患者姓名或住院号</span>
-              <input
-                className="input"
-                type="search"
-                value={query}
-                placeholder="搜索姓名或住院号"
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </label>
-          </div>
-          {patients.loading ? <LoadingBlock message="正在读取患者列表…" /> : null}
-          {patients.error ? (
-            <ErrorBanner
-              message={patients.error}
-              action={
-                <button type="button" className="btn btn--text" onClick={patients.reload}>
-                  重新读取
-                </button>
-              }
-            />
-          ) : null}
-          {!patients.loading && !patients.error ? (
-            patients.data && patients.data.length > 0 ? (
-              <div className="card table-card">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <SortableHeader label="姓名" field="name" active={sort} onSort={toggleSort} />
-                      <SortableHeader label="住院号" field="medical_record_no" active={sort} onSort={toggleSort} />
-                      <th>责任医生</th>
-                      <SortableHeader label="最后编辑" field="updated_at" active={sort} onSort={toggleSort} />
-                      <SortableHeader label="下次复评" field="next_review_date" active={sort} onSort={toggleSort} />
-                      <SortableHeader label="当前环节" field="current_state" active={sort} onSort={toggleSort} />
-                      <th aria-label="操作" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visiblePatients.map((patient) => {
-                      const due = dueState(patient, effectiveToday)
-                      return (
-                      <tr className={`patient-row patient-row--${due}`} key={patient.id}>
-                        <td>
-                          {patient.name}
-                          {!patient.can_edit ? <StatusBadge tone="neutral">只读</StatusBadge> : null}
-                        </td>
-                        <td className="num">{patient.medical_record_no}</td>
-                        <td>{patient.owner_display_name ?? '未指定'}</td>
-                        <td className="num">{patient.updated_at.replace('T', ' ').slice(0, 16).replaceAll('-', '/')}</td>
-                        <td className="num">
-                          {patient.next_review_date?.replaceAll('-', '/') ?? '—'}
-                          {due === 'overdue' ? <StatusBadge tone="warning">已逾期</StatusBadge> : null}
-                          {due === 'today' ? <StatusBadge tone="success">今日到期</StatusBadge> : null}
-                        </td>
-                        {/* 只显示后端领域表提供的自然语言状态名，不泄漏状态代码 */}
-                        <td>
-                          {stateNames.get(patient.current_state) ?? patient.stage ?? '当前管理环节'}
-                          {!patient.profile_complete ? <StatusBadge tone="warning">待完善资料</StatusBadge> : null}
-                          {patient.is_test_patient ? <StatusBadge tone="neutral">测试患者</StatusBadge> : null}
-                        </td>
-                        <td className="table__actions">
-                          <button
-                            type="button"
-                            className="btn btn--text"
-                            onClick={() => onOpenPatient(patient.id)}
-                          >
-                            进入患者管理
-                          </button>
-                        </td>
-                      </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-                {visiblePatients.length === 0 ? <EmptyState message="没有匹配的患者。" /> : null}
-              </div>
-            ) : (
-              <EmptyState message="暂无患者档案。" />
-            )
-          ) : null}
-        </section>
+  return <div className="page">
+    <PageHeader title="患者工作台" context={`当前账号：${currentUser.display_name}`} actions={<>
+      <DateControl onDateChanged={context.reload} />
+      {currentUser.role === 'admin' ? <a className="btn btn--text" href="/admin">账号管理</a> : null}
+      <button className="btn btn--text" onClick={onLogout}>退出登录</button>
+    </>} />
+    <p>新建患者后，从预评估开始管理；请按实际日期记录检查、用药及随访情况。</p>
+    <a href="/guide" className="btn btn--text">使用指南</a>
+    {error || patients.error ? <ErrorBanner message={error || patients.error || ''} /> : null}
+    <section className="card stack">
+      <div className="page__actions">
+        <button className={`btn ${!history ? 'btn--primary' : 'btn--text'}`} onClick={() => setHistory(false)}>当前病例</button>
+        <button className={`btn ${history ? 'btn--primary' : 'btn--text'}`} onClick={() => setHistory(true)}>已归档病例</button>
+        <button className="btn btn--outlined" disabled={busy} onClick={() => setCreateOpen(!createOpen)}>{createOpen ? '收起建档表单' : '新建患者'}</button>
       </div>
-      <ImportDialog
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onImport={patientApi.importFile}
-        onCompleted={patients.reload}
-      />
-    </div>
-  )
+      {createOpen ? <div className="card card--muted stack"><h2>新建患者</h2><p>填写患者基本资料，系统生成病例编号；后续检查、测量和用药由医生记录。</p>
+        <div className="form-grid">
+          <FieldRow label="姓名">{(props) => <input {...props} className="input" value={name} maxLength={64} onChange={(e) => setName(e.target.value)} />}</FieldRow>
+          <FieldRow label="性别">{(props) => <select {...props} className="select" value={gender} onChange={(e) => setGender(e.target.value)}><option value="">待选择</option><option>女</option><option>男</option></select>}</FieldRow>
+          <FieldRow label="出生年月">{(props) => <YearMonthInput {...props} year={birthYear} month={birthMonth} onYearChange={setBirthYear} onMonthChange={setBirthMonth} />}</FieldRow>
+          <FieldRow label="科室">{(props) => <select {...props} className="select" value={department} onChange={(e) => setDepartment(e.target.value)}>
+            {(references.data?.departments ?? ['内分泌科']).map((item) => <option key={item}>{item}</option>)}
+          </select>}</FieldRow>
+        </div><button className="btn btn--primary" disabled={busy} onClick={() => void createCase()}>保存并开始预评估</button>
+      </div> : null}
+      <div className="page__actions">
+        <label>搜索病例 <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} /></label>
+        <label>排序 <select className="select" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
+          <option value="updated">最近更新</option><option value="name">病例名称</option><option value="date">复评日期</option>
+        </select></label>
+      </div>
+      {patients.loading ? <LoadingBlock message="正在加载病例…" /> : visible.length === 0 ? <EmptyState message={history ? '暂无归档记录' : query ? '暂无匹配病例' : '暂无病例，请新建患者。'} /> :
+        <div className="table-scroll"><table className="table"><thead><tr>
+          <th>患者</th><th>当前状态</th><th>责任医生</th><th>下次复评</th><th>操作</th>
+        </tr></thead><tbody>{visible.map((p) => <tr key={p.id}>
+          <td>{p.name}<div className="field-row__hint">{patientNumber(p)}</div></td>
+          <td><StatusBadge>{names.get(p.current_state) ?? '加载中'}</StatusBadge></td>
+          <td>{p.owner_display_name}</td><td>{p.next_review_date ?? '尚未约定'}</td>
+          <td><button className="btn btn--text" onClick={() => onOpenPatient(p.id)}>{history ? '查看历史' : '继续管理'}</button>
+            {!history ? <button className="btn btn--text" disabled={busy} onClick={() => setResetPatient(p)}>归档并新建</button> : null}</td>
+        </tr>)}</tbody></table></div>}
+      <ConfirmDialog open={Boolean(resetPatient)} title="归档并新建" confirmLabel="归档并建立新管理记录" cancelLabel="保留当前病例" danger
+        description={`${resetPatient?.name ?? ''}：当前病例将归档并保留历史，基于基本资料建立新的管理记录。既往测量、检查、用药和临床结论不会自动带入。`}
+        onCancel={() => setResetPatient(null)} onConfirm={() => {if (!resetPatient || busy) return; const pid = resetPatient.id; setResetPatient(null); void run(() => api.post<Patient>(`/api/patients/${pid}/reset`))}} />
+    </section>
+  </div>
 }

@@ -25,6 +25,7 @@ from app.api.flow_common import (
     require_patient_write_access,
     require_profile_complete,
 )
+from app.config import get_settings
 from app.core.exceptions import BusinessRuleError, ConflictError, NotFoundError
 from app.core.test_mode import test_capability_enabled
 from app.domain import templates
@@ -35,6 +36,7 @@ from app.models.schemas import (
     ImportRowResult,
     OwnershipTransferIn,
     PatientCreateIn,
+    PatientHeightUpdateIn,
     PatientImportOut,
     PatientOut,
     PatientProfileUpdateIn,
@@ -47,6 +49,7 @@ from app.repository import patients as patients_repo
 from app.repository import users as users_repo
 from app.repository.database import get_db
 from app.services.patient_import import parse_patient_import
+from app.utils.measurements import calculate_bmi
 
 router = APIRouter(prefix="/patients", tags=["患者档案"])
 MAX_IMPORT_BYTES = 5 * 1024 * 1024
@@ -76,6 +79,14 @@ def create_patient(
     db: Session = Depends(get_db),
 ) -> PatientOut:
     """建立患者档案。新患者一律从"常规糖尿病综合管理"开始。"""
+    if get_settings().demo_mode:
+        # 两个建档入口共用手工资料校验；不接收真实联系方式或历史住院号。
+        from app.api.demo import CaseIn, create_case
+        try:
+            manual = CaseIn.model_validate(payload.model_dump(include={"name", "gender", "birth_date", "department"}))
+        except ValueError as exc:
+            raise BusinessRuleError("请核对姓名、性别、出生年月和科室。", code="DEMO_PROFILE_INVALID") from exc
+        return create_case(manual, current_user, db)
     medical_record_no = payload.medical_record_no.strip()
     name = payload.name.strip()
     if not name or not medical_record_no:
@@ -228,7 +239,8 @@ def list_patients(
     db: Session = Depends(get_db),
 ) -> list[PatientOut]:
     """列出患者档案（按建档时间倒序）。"""
-    return [patient_out(db, item, current_user) for item in patients_repo.list_patients(db)]
+    return [patient_out(db, item, current_user) for item in patients_repo.list_patients(db)
+            if not get_settings().demo_mode or current_user.role == "admin" or item.owner_id == current_user.id]
 
 
 @router.get("/{patient_id}", response_model=PatientOut)
@@ -308,6 +320,40 @@ def transfer_patient_owner(
         target_type="patient",
         target_id=patient.id,
         detail={"old_owner_id": old_owner_id, "new_owner_id": new_owner.id},
+    )
+    db.commit()
+    return patient_out(db, patient, current_user)
+
+
+@router.put("/{patient_id}/height", response_model=PatientOut)
+def update_patient_height(
+    patient_id: int,
+    payload: PatientHeightUpdateIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PatientOut:
+    """管理员更正已确认身高，并保留旧值、新值与 BMI 变化审计。
+
+    本接口只更新患者当前快照；既有临床事件中的历史身高/BMI 不得回写。
+    """
+    require_admin(current_user)
+    patient = get_patient_or_404(db, patient_id)
+    old_height = patient.height_cm
+    old_bmi = patient.bmi
+    new_bmi = calculate_bmi(payload.height_cm, patient.weight_kg)
+    patients_repo.update_height(db, patient, height_cm=payload.height_cm, bmi=new_bmi)
+    audit_repo.write_audit(
+        db,
+        action="patient_height_update",
+        operator_id=current_user.id,
+        target_type="patient",
+        target_id=patient.id,
+        detail={
+            "old_height_cm": old_height,
+            "new_height_cm": payload.height_cm,
+            "old_bmi": old_bmi,
+            "new_bmi": new_bmi,
+        },
     )
     db.commit()
     return patient_out(db, patient, current_user)

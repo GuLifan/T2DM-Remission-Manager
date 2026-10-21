@@ -16,10 +16,15 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from app.core.exceptions import BusinessRuleError, ConflictError, ForbiddenError, NotFoundError
 from app.core.test_mode import simulated_date_for_event
+from app.models.event import Event
 from app.models.patient import Patient
 from app.models.schemas import PatientOut
 from app.models.user import User
@@ -27,6 +32,7 @@ from app.repository import audit as audit_repo
 from app.repository import events as events_repo
 from app.repository import patients as patients_repo
 from app.repository import users as users_repo
+from app.utils.measurements import calculate_bmi
 
 
 def get_patient_or_404(db: Session, patient_id: int) -> Patient:
@@ -45,7 +51,7 @@ def require_admin(user: User) -> None:
 
 def can_edit_patient(user: User, patient: Patient) -> bool:
     """判断账号是否可以改变患者档案或流程状态。"""
-    return user.role == "admin" or patient.owner_id == user.id
+    return not patient.archived and (user.role == "admin" or patient.owner_id == user.id)
 
 
 def require_patient_write_access(user: User, patient: Patient) -> None:
@@ -88,6 +94,47 @@ def require_profile_complete(patient: Patient) -> None:
         raise BusinessRuleError("请先完善患者基本资料，再发起60秒缓解预评估。", code="PROFILE_INCOMPLETE")
 
 
+def require_revision(patient: Patient, expected_revision: int) -> None:
+    """v0.3客户端须核对最新患者版本，避免用旧资料做临床确认。"""
+    if patient.clinical_revision != expected_revision:
+        raise ConflictError("患者资料已更新，请刷新并重新核对本次记录。", code="STALE_PATIENT")
+
+
+def prepare_measurement_snapshot(
+    patient: Patient,
+    *,
+    weight_kg: float | None,
+    height_cm: float | None,
+) -> tuple[dict[str, float], dict[str, object]]:
+    """校验本次测量并返回事件快照与患者最新值更新。
+
+    每次临床评估必须重新填写体重。身高只在患者尚无身高时允许首次填写；
+    已确认身高只能由管理员在患者档案专用接口更正。BMI 只作为数值快照，
+    不参与任何临床分支。
+    """
+    if weight_kg is None:
+        raise BusinessRuleError("请填写本次体重，不能沿用上一次记录。", code="WEIGHT_REQUIRED")
+
+    if patient.height_cm is None:
+        if height_cm is None:
+            raise BusinessRuleError("请先填写并确认患者身高。", code="HEIGHT_REQUIRED")
+        effective_height = float(height_cm)
+    else:
+        effective_height = float(patient.height_cm)
+        if height_cm is not None and abs(float(height_cm) - effective_height) > 1e-6:
+            raise BusinessRuleError(
+                "患者身高已确认并锁定；如需更正，请由管理员在患者工作台操作。",
+                code="HEIGHT_LOCKED",
+            )
+
+    snapshot = {
+        "height_cm": effective_height,
+        "weight_kg": float(weight_kg),
+        "bmi": float(calculate_bmi(effective_height, float(weight_kg))),
+    }
+    return snapshot, dict(snapshot)
+
+
 def record_outcome(
     db: Session,
     *,
@@ -102,7 +149,12 @@ def record_outcome(
     request_id: str | None = None,
     source: str = "doctor",
     updates: dict[str, object] | None = None,
-) -> None:
+    clinical_contract_version: str = "v1.0",
+    transition_ids: list[str] | None = None,
+    expected_revision: int | None = None,
+    objective_met: bool = False,
+    associated_record_ids: list[int] | None = None,
+) -> Event:
     """写入一次决策的完整结果并提交。
 
     顺序：幂等检查 → 状态与字段落库 → 事件流水 → 审计日志 → 提交。
@@ -118,6 +170,18 @@ def record_outcome(
     """
     # 所有临床落库统一从这里经过，避免新增接口时遗漏横向越权守卫
     require_patient_write_access(operator, patient)
+    if patient.current_state != source_state:
+        raise ConflictError("患者流程已变化，请刷新后重新核对。", code="STALE_PATIENT")
+    if patient.clinical_contract_version == "v0.3" and clinical_contract_version != "v0.3":
+        raise BusinessRuleError("此患者已采用新版流程，请刷新工作台后使用新版表单。", code="V03_REQUIRED")
+    if clinical_contract_version == "v0.3":
+        if expected_revision is None or not transition_ids:
+            raise BusinessRuleError("本次记录缺少资料版本或流程核对，请刷新后重试。", code="V03_CONTRACT_REQUIRED")
+        require_revision(patient, expected_revision)
+    elif clinical_contract_version != "v1.0" or transition_ids is not None:
+        raise BusinessRuleError("本次记录的流程版本无法识别。", code="UNKNOWN_CONTRACT")
+    if objective_met and (clinical_contract_version != "v0.3" or transition_ids != ["T34"]):
+        raise BusinessRuleError("客观核对记录无效，请重新核对。", code="INVALID_OBJECTIVE_EVENT")
     # 幂等：同一个 request_id 只允许成功一次
     if request_id and events_repo.find_by_request_id(db, patient.id, request_id) is not None:
         raise ConflictError("该操作已经提交过，本次未重复记录。", code="DUPLICATE_REQUEST")
@@ -125,8 +189,19 @@ def record_outcome(
     # 模拟日期只能作用于测试患者；真实患者在任何临床写入发生前即被硬阻断
     event_simulated_date = simulated_date_for_event(operator, patient)
 
-    patients_repo.apply_outcome(db, patient, target_state=target_state, updates=updates)
-    events_repo.add_event(
+    if clinical_contract_version == "v0.3":
+        # 任何新的临床决定都会撤销旧客观核对资格；确认动作已在接口验证原快照。
+        updates = {**(updates or {}), "clinical_contract_version": "v0.3",
+                   "objective_assessment_event_id": None, "objective_assessment_revision": None,
+                   "objective_assessment_digest": None}
+
+    try:
+        patients_repo.apply_outcome(db, patient, target_state=target_state, updates=updates, transition_ids=transition_ids)
+    except StaleDataError as exc:
+        # flush失败后必须显式回滚，事件与审计不能成为半笔提交。
+        db.rollback()
+        raise ConflictError("患者资料已更新，请刷新并重新核对本次记录。", code="STALE_PATIENT") from exc
+    event = events_repo.add_event(
         db,
         patient_id=patient.id,
         operator_id=operator.id,
@@ -139,7 +214,26 @@ def record_outcome(
         payload=payload,
         request_id=request_id,
         simulated_date=event_simulated_date,
+        clinical_contract_version=clinical_contract_version,
+        transition_ids=transition_ids,
     )
+    # 新记录与事件同一事务建立来源；已提交的历史资料绝不改写。
+    if associated_record_ids:
+        from app.models.clinical_record import ClinicalRecord
+        for record_id in set(associated_record_ids):
+            record = db.get(ClinicalRecord, record_id)
+            if record is None or record.patient_id != patient.id:
+                raise BusinessRuleError("资料来源与病例不一致")
+            if record.source_event_id is None:
+                record.source_event_id = event.id
+                record.source_index = record.id
+    if objective_met:
+        patient.objective_assessment_event_id = event.id
+        # 明确预留本次资格写入版本，并将资格绑定同一个版本；不依赖隐式flush次数。
+        patient.clinical_revision += 1
+        patient.objective_assessment_revision = patient.clinical_revision
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        patient.objective_assessment_digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
     # 审计只记录"谁做了什么"，不记录临床输入内容
     audit_repo.write_audit(
         db,
@@ -154,3 +248,4 @@ def record_outcome(
         },
     )
     db.commit()
+    return event

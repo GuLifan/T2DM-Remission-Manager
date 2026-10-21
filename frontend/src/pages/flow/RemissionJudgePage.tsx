@@ -16,7 +16,7 @@ import { useState } from 'react'
 
 import { ApiError } from '../../api/client'
 import { flowApi } from '../../api/endpoints'
-import { ErrorBanner, FieldRow, NumericInput, ResultBanner, SettingsRow } from '../../components'
+import { AssessmentMeasurementFields, ErrorBanner, FieldRow, NumericInput, ResultBanner, SettingsRow } from '../../components'
 import { STAGES, type Patient, type RemissionJudgeResult } from '../../types'
 
 interface FlowPageProps {
@@ -26,6 +26,8 @@ interface FlowPageProps {
 
 /** 单元5：缓解判定。 */
 export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps) {
+  const [weight, setWeight] = useState('')
+  const [height, setHeight] = useState(patient.height_cm?.toString() ?? '')
   const [credible, setCredible] = useState('是')
   const [drugFree, setDrugFree] = useState('是')
   const [hba1cReliable, setHba1cReliable] = useState('是')
@@ -39,6 +41,7 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
   const [result, setResult] = useState<RemissionJudgeResult | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [objectiveRecorded, setObjectiveRecorded] = useState(false)
 
   /** 把输入转成数字或 null（0 是合法值，不能被吞掉）。 */
   function toNumberOrNull(value: string): number | null {
@@ -48,6 +51,8 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
   /** 组装核对输入。 */
   function buildPayload(): Record<string, unknown> {
     return {
+      f018_weight: toNumberOrNull(weight),
+      f019_height: patient.height_cm == null ? toNumberOrNull(height) : null,
       f041_diagnosis_credible: credible,
       f042_drug_free_3m: drugFree,
       f043_hba1c_reliable: hba1cReliable,
@@ -61,7 +66,12 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
 
   /** 步骤1：核对客观条件（只读，不落库）。 */
   async function handleCheck() {
+    if (!weight || (patient.height_cm == null && !height)) {
+      setError(patient.height_cm == null ? '请填写本次体重和患者身高。' : '请填写本次体重。')
+      return
+    }
     setError('')
+    setObjectiveRecorded(false)
     setSubmitting(true)
     try {
       setResult(await flowApi.judgeCheck(patient.id, buildPayload()))
@@ -74,11 +84,16 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
 
   /** 步骤2：记录判定结论（落库，可能改变患者状态）。 */
   async function handleRoute() {
+    if (!weight || (patient.height_cm == null && !height)) {
+      setError(patient.height_cm == null ? '请填写本次体重和患者身高。' : '请填写本次体重。')
+      return
+    }
     setError('')
     setSubmitting(true)
     try {
       const response = await flowApi.judgeRoute(patient.id, buildPayload())
       setResult(response)
+      setObjectiveRecorded(response.doctor_confirmation_required)
       onUpdated()
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : '记录失败，请重试。')
@@ -117,7 +132,14 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
           {error ? <ErrorBanner message={error} /> : null}
 
           <div className="form-grid">
-            <FieldRow label="既往 T2DM 诊断是否可信" hint="不是短暂应激性或诊断依据不足的高血糖。">
+            <AssessmentMeasurementFields
+              patient={patient}
+              weight={weight}
+              onWeightChange={setWeight}
+              height={height}
+              onHeightChange={setHeight}
+            />
+            <FieldRow label="T2DM 诊断可信度" hint="不是短暂应激性或诊断依据不足的高血糖。">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -131,7 +153,7 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
                 </select>
               )}
             </FieldRow>
-            <FieldRow label="已停用全部降糖作用药物至少 3 个月" hint="停药日期是观察期计时锚点。">
+            <FieldRow label="停药满 3 个月" hint="已停用全部降糖作用药物；停药日期是观察期计时锚点。">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -146,7 +168,7 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
               )}
             </FieldRow>
             <FieldRow
-              label="HbA1c 结果是否可可靠解释"
+              label="HbA1c 可靠性"
               hint="可靠时只使用 HbA1c；不可靠时才允许使用替代指标。"
             >
               {(fieldProps) => (
@@ -182,7 +204,7 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
 
           {hba1cReliable === '否' ? (
             <div className="form-grid">
-              <FieldRow label="空腹血糖 FPG（mmol/L）" hint="替代标准：低于 7.0。">
+              <FieldRow label="空腹血糖 FPG" hint="替代标准：低于 7.0 mmol/L。">
                 {(fieldProps) => (
                   <NumericInput
                     {...fieldProps}
@@ -195,7 +217,7 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
                   />
                 )}
               </FieldRow>
-              <FieldRow label="CGM 估算 HbA1c（%）" hint="替代标准：低于 6.5，由医生手工录入。">
+              <FieldRow label="CGM 估算 HbA1c" hint="替代标准：低于 6.5%，由医生手工录入。">
                 {(fieldProps) => (
                   <NumericInput
                     {...fieldProps}
@@ -208,7 +230,7 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
                   />
                 )}
               </FieldRow>
-              <FieldRow label="替代指标是否完成独立复核" hint="未完成独立复核不得形成客观条件满足。">
+              <FieldRow label="替代指标复核" hint="未完成独立复核不得形成客观条件满足。">
                 {(fieldProps) => (
                   <select
                     {...fieldProps}
@@ -225,12 +247,12 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
           ) : null}
 
           <SettingsRow
-            label="返回主动管理后的管理阶段"
+            label="返回管理阶段"
             description="若本次需要返回阶段复评（仍用药或未达标），请先选择返回的管理阶段。"
             control={
               <select
                 className="select"
-                aria-label="返回主动管理后的管理阶段"
+            aria-label="返回管理阶段"
                 value={targetStage}
                 onChange={(event) => setTargetStage(event.target.value)}
               >
@@ -256,7 +278,7 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
           <div className="card card--muted">
             <h3 className="section__title">医生确认</h3>
             <p className="section__description">
-              客观资料符合缓解标准，但系统不会自动形成结论——请由医生确认。
+              客观资料符合缓解标准。请先记录客观结论，再由医生确认；系统不会自动形成缓解结论。
             </p>
             <FieldRow label="定向复核项目" hint="选择「暂不确认」时必填。">
               {(fieldProps) => (
@@ -278,12 +300,12 @@ export default function RemissionJudgePage({ patient, onUpdated }: FlowPageProps
         <button type="button" className="btn btn--outlined" disabled={submitting} onClick={handleCheck}>
           {submitting ? '正在核对…' : '核对客观条件'}
         </button>
-        {result && (result.needs_target_stage || result.blocked) ? (
+        {result && (result.needs_target_stage || result.blocked || (result.doctor_confirmation_required && !objectiveRecorded)) ? (
           <button type="button" className="btn btn--outlined" disabled={submitting} onClick={handleRoute}>
-            记录判定结论
+            {result.doctor_confirmation_required ? '记录客观结论' : '记录判定结论'}
           </button>
         ) : null}
-        {result?.doctor_confirmation_required ? (
+        {result?.doctor_confirmation_required && objectiveRecorded ? (
           <>
             <button
               type="button"

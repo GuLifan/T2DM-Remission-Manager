@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.api.flow_common import get_patient_or_404, record_outcome, require_state
+from app.api.flow_common import get_patient_or_404, prepare_measurement_snapshot, record_outcome, require_state
 from app.core.exceptions import BusinessRuleError
 from app.core.test_mode import effective_today_for_patient
 from app.domain import enums
@@ -57,6 +57,12 @@ def check(
     """核对客观条件（只读，不写库、不写事件）。"""
     patient = get_patient_or_404(db, patient_id)
     require_state(patient, (ST50,), "缓解判定")
+    # 核对保持只读，但仍强制校验本次体重与已锁定身高。
+    prepare_measurement_snapshot(
+        patient,
+        weight_kg=payload.f018_weight,
+        height_cm=payload.f019_height,
+    )
     return _run_check(patient, payload, current_user)
 
 
@@ -75,6 +81,11 @@ def route(
     patient = get_patient_or_404(db, patient_id)
     require_state(patient, (ST50,), "缓解判定")
     source_state = patient.current_state
+    measurement_snapshot, measurement_updates = prepare_measurement_snapshot(
+        patient,
+        weight_kg=payload.f018_weight,
+        height_cm=payload.f019_height,
+    )
     result = _run_check(patient, payload, current_user)
     target_state = result.target_state
 
@@ -84,7 +95,7 @@ def route(
             return result
         target_state = ST31 if payload.target_stage == enums.STAGE_STABLE else ST32
 
-    updates: dict[str, object] = {}
+    updates: dict[str, object] = measurement_updates
     if target_state in (ST31, ST32):
         updates["stage"] = payload.target_stage
         updates["next_review_date"] = None
@@ -98,7 +109,7 @@ def route(
         rule_id=result.rule_id,
         template_id=result.template_id,
         output_text=result.output_text,
-        payload=payload.model_dump(mode="json"),
+        payload={**payload.model_dump(mode="json"), "measurement_snapshot": measurement_snapshot},
         request_id=payload.request_id,
         updates=updates,
     )

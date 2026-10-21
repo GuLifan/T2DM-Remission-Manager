@@ -13,13 +13,15 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Header, Response
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.flow_common import require_admin
-from app.core.exceptions import BusinessRuleError, ConflictError
+from app.config import get_settings
+from app.core.exceptions import BusinessRuleError, ConflictError, ForbiddenError
 from app.core.security import create_session_token, verify_password
+from app.models.demo import DemoSession
 from app.models.schemas import (
     AssignableDoctorOut,
     AuthStatusOut,
@@ -35,6 +37,7 @@ from app.repository import audit as audit_repo
 from app.repository import departments as departments_repo
 from app.repository import users as users_repo
 from app.repository.database import get_db
+from app.services.demo import consume_invite, digest
 
 router = APIRouter(prefix="/auth", tags=["账号"])
 
@@ -42,7 +45,7 @@ router = APIRouter(prefix="/auth", tags=["账号"])
 @router.get("/status", response_model=AuthStatusOut)
 def auth_status(db: Session = Depends(get_db)) -> AuthStatusOut:
     """查询是否还没有任何账号（首次运行需要引导创建）。"""
-    return AuthStatusOut(needs_bootstrap=users_repo.count_users(db) == 0)
+    return AuthStatusOut(needs_bootstrap=not get_settings().demo_mode and users_repo.count_users(db) == 0)
 
 
 @router.post("/bootstrap", response_model=LoginOut)
@@ -51,6 +54,8 @@ def bootstrap(payload: BootstrapIn, db: Session = Depends(get_db)) -> LoginOut:
 
     仅在系统内还没有任何账号时可用（防止后续被用来凭空创建账号）；不预置任何默认密码。
     """
+    if get_settings().demo_mode:
+        raise ForbiddenError("请由管理员在服务器终端初始化账号。", code="BOOTSTRAP_CLOSED")
     if users_repo.count_users(db) > 0:
         raise ConflictError("系统已存在账号，请直接登录。", code="ALREADY_BOOTSTRAPPED")
     user = users_repo.create_user(
@@ -89,6 +94,7 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)) -> RegisterOut:
     department = payload.department.strip() if payload.department else None
     if department and not departments_repo.is_active_name(db, department):
         raise BusinessRuleError("所选科室不在当前科室字典中，请重新选择。", code="DEPARTMENT_INVALID")
+    invite = consume_invite(db, payload.invite_code) if get_settings().demo_mode else None
     user = users_repo.create_user(
         db,
         username=username,
@@ -97,6 +103,9 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)) -> RegisterOut:
         department=department,
         role="doctor",
     )
+    if invite is not None:
+        invite.used_by = user.id
+        user.is_test_account = True
     audit_repo.write_audit(
         db,
         action="account_register",
@@ -153,17 +162,24 @@ def login(payload: LoginIn, db: Session = Depends(get_db)) -> LoginOut:
     users_repo.register_login_success(db, user)
     audit_repo.write_audit(db, action="login", operator_id=user.id)
     token, expires_at = create_session_token(user.id)
+    if get_settings().demo_mode:
+        db.add(DemoSession(digest=digest(token), user_id=user.id, expires_at=expires_at))
     db.commit()
     return LoginOut(token=token, expires_at=expires_at, user=UserOut.model_validate(user))
 
 
 @router.post("/logout", status_code=204)
-def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
+def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db),
+           authorization: str | None = Header(default=None)) -> Response:
     """登出。
 
     说明：本版本令牌为无状态签名令牌，服务端不维护会话表，
     因此登出以"记录审计 + 前端丢弃令牌"实现；令牌到期后自然失效。
     """
+    if get_settings().demo_mode and authorization:
+        active = db.get(DemoSession, digest(authorization.split(" ", 1)[1].strip()))
+        if active:
+            db.delete(active)
     audit_repo.write_audit(db, action="logout", operator_id=current_user.id)
     db.commit()
     return Response(status_code=204)

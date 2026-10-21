@@ -34,6 +34,7 @@ export default function LoginPage({ onLoggedIn }: LoginPageProps) {
   const [displayName, setDisplayName] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [department, setDepartment] = useState('')
   const [departments, setDepartments] = useState<string[]>([])
   const [mode, setMode] = useState<'login' | 'register'>('login')
@@ -72,6 +73,10 @@ export default function LoginPage({ onLoggedIn }: LoginPageProps) {
       setError('两次输入的密码不一致。')
       return
     }
+    if (registering && !inviteCode.trim()) {
+      setError('请填写管理员提供的邀请码。')
+      return
+    }
     setSubmitting(true)
     try {
       if (registering) {
@@ -81,6 +86,7 @@ export default function LoginPage({ onLoggedIn }: LoginPageProps) {
           department: department || null,
           password,
           password_confirm: passwordConfirm,
+          invite_code: inviteCode.trim(),
         })
         setSuccess(registered.message)
         setMode('login')
@@ -129,6 +135,10 @@ export default function LoginPage({ onLoggedIn }: LoginPageProps) {
         </p>
 
         <div className="stack">
+          {registering ? <FieldRow label="邀请码" hint="由管理员提供，一次有效。">
+            {(fieldProps) => <input {...fieldProps} className="input" value={inviteCode}
+              autoComplete="off" onChange={(event) => setInviteCode(event.target.value)} />}
+          </FieldRow> : null}
           <FieldRow label="登录名">
             {(fieldProps) => (
               <input
@@ -142,7 +152,7 @@ export default function LoginPage({ onLoggedIn }: LoginPageProps) {
           </FieldRow>
 
           {needsBootstrap || registering ? (
-            <FieldRow label="界面显示姓名" hint="会记入临床事件流水的操作者。">
+            <FieldRow label="显示姓名" hint="会记入临床事件流水的操作者。">
               {(fieldProps) => (
                 <input
                   {...fieldProps}

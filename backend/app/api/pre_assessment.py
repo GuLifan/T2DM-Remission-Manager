@@ -18,7 +18,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.api.flow_common import get_patient_or_404, record_outcome, require_profile_complete, require_state
+from app.api.flow_common import (
+    get_patient_or_404,
+    prepare_measurement_snapshot,
+    record_outcome,
+    require_profile_complete,
+    require_state,
+)
 from app.core.exceptions import BusinessRuleError
 from app.core.test_mode import effective_today_for_patient
 from app.domain import enums, templates
@@ -29,7 +35,6 @@ from app.repository import events as events_repo
 from app.repository.database import get_db
 from app.services import defaults
 from app.services.pre_assessment import evaluate_pre_assessment
-from app.utils.measurements import calculate_bmi
 
 router = APIRouter(prefix="/patients", tags=["单元1：60秒缓解预评估"])
 
@@ -55,16 +60,11 @@ def submit_pre_assessment(
 
     result = evaluate_pre_assessment(source_state, payload)
 
-    # 身高与体重必须成对记录，避免档案里长期留下无法解释的半组测量值。
-    if (payload.f018_weight is None) != (payload.f019_height is None):
-        raise BusinessRuleError("身高和体重需同时填写，或同时留空。", code="MEASUREMENTS_INCOMPLETE")
-    measurement_updates: dict[str, object] = {}
-    if payload.f018_weight is not None and payload.f019_height is not None:
-        measurement_updates = {
-            "weight_kg": payload.f018_weight,
-            "height_cm": payload.f019_height,
-            "bmi": calculate_bmi(payload.f019_height, payload.f018_weight),
-        }
+    measurement_snapshot, measurement_updates = prepare_measurement_snapshot(
+        patient,
+        weight_kg=payload.f018_weight,
+        height_cm=payload.f019_height,
+    )
 
     # 回到常规管理时清空阶段相关字段；暂缓（自环）与进入完整评估时不动这些字段
     updates: dict[str, object] = measurement_updates
@@ -81,7 +81,11 @@ def submit_pre_assessment(
         template_id=result.template_id,
         output_text=result.output_text,
         # 事件载荷保留暂缓原因，便于日后追溯"当时为什么暂缓"
-        payload={**payload.model_dump(mode="json"), "hold_reasons": result.hold_reasons},
+        payload={
+            **payload.model_dump(mode="json"),
+            "measurement_snapshot": measurement_snapshot,
+            "hold_reasons": result.hold_reasons,
+        },
         request_id=payload.request_id,
         updates=updates,
     )
@@ -108,6 +112,11 @@ def enter_stable_after_acute(
         )
     if not payload.interventions:
         raise BusinessRuleError("快速建档时至少选择一种干预组合。", code="INTERVENTIONS_REQUIRED")
+    measurement_snapshot, measurement_updates = prepare_measurement_snapshot(
+        patient,
+        weight_kg=payload.f018_weight,
+        height_cm=payload.f019_height,
+    )
 
     source_state = patient.current_state
     next_review = payload.next_review_date or defaults.default_next_review_date(
@@ -129,9 +138,10 @@ def enter_stable_after_acute(
         rule_id="E1-B02-STABILIZED",
         template_id="OUT-E2-STABLE",
         output_text=output_text,
-        payload=payload.model_dump(mode="json"),
+        payload={**payload.model_dump(mode="json"), "measurement_snapshot": measurement_snapshot},
         request_id=payload.request_id,
         updates={
+            **measurement_updates,
             "stage": enums.STAGE_STABLE,
             "stage_goal": payload.stage_goal,
             "interventions": interventions,

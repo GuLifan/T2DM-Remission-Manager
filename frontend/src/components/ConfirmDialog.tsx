@@ -8,7 +8,7 @@
  *   - 2026-09-20  v1.0  M1 初始实现
  */
 
-import { useEffect } from 'react'
+import { useModalFocus } from '../hooks/useModalFocus'
 
 interface ConfirmDialogProps {
   /** 是否显示 */
@@ -40,22 +40,14 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  // Esc 关闭：键盘可达性要求（UI.md 8.2）
-  useEffect(() => {
-    if (!open) return undefined
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCancel()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [open, onCancel])
+  const panel = useModalFocus(open, onCancel)
 
   if (!open) return null
   return (
     <div className="confirm-dialog__scrim" role="presentation">
-      <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={title}>
+      <div ref={panel} className="confirm-dialog" role="dialog" aria-modal="true" aria-label={title}>
         <span className="confirm-dialog__title">{title}</span>
-        <p>{description}</p>
+        <p style={{whiteSpace: 'pre-line'}}>{description}</p>
         <div className="confirm-dialog__actions">
           <button type="button" className="btn btn--text" onClick={onCancel}>
             {cancelLabel}

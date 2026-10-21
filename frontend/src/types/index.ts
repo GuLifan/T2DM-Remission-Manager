@@ -39,11 +39,14 @@ export interface AssignableDoctor {
 // ===== 患者 =====
 
 export interface Patient {
+  archived?: boolean
+  demo_case?: number | null
   id: number
   name: string
   gender: string
   birth_date: string
   medical_record_no: string
+  display_record_no?: string
   department: string
   contact_phone: string | null
   created_by: number | null
@@ -67,6 +70,14 @@ export interface Patient {
   remission_confirmed_date: string | null
   has_glucose_lowering_drug: boolean | null
   drug_purpose: string | null
+  clinical_contract_version: string
+  clinical_revision: number
+  observation_status: string
+  observation_cycle: number
+  applicable_interventions: string[] | null
+  actual_stop_confirmed: boolean | null
+  current_remission_evaluation: string | null
+  objective_assessment_event_id: number | null
   created_at: string
   updated_at: string
 }
@@ -111,6 +122,23 @@ export interface EventOut {
   operator_id: number
   simulated_date: string | null
   created_at: string
+  clinical_contract_version: string
+  transition_ids: string[] | null
+}
+
+/** v0.3统一临床响应；界面只展示自然语言，不展示内部转移编号。 */
+export interface ClinicalV03Result {
+  clinical_contract_version: 'v0.3'
+  transition_ids: string[]
+  target_state: string
+  rule_id: string
+  template_id: string | null
+  output_text: string
+  tasks: string[]
+  objective_met: boolean
+  patient_revision: number
+  assessment_event_id: number | null
+  advanced?: boolean
 }
 
 export interface EventPage {
@@ -122,6 +150,7 @@ export interface EventPage {
 
 export interface TestContextOut {
   test_mode_enabled: boolean
+  can_manage_date?: boolean
   can_use_test_tools: boolean
   real_date: string
   effective_date: string

@@ -28,10 +28,21 @@ interface CheckboxGroupProps {
   onChange: (values: string[]) => void
   /** 组级说明 */
   description?: string
+  /** 排他项；选择后自动清除同组其他项。省略时使用项目统一排他词。 */
+  exclusiveValues?: readonly string[]
 }
 
+const DEFAULT_EXCLUSIVE_VALUES = ['无', '未见', '未使用', '不适用', '无明确诉求'] as const
+
 /** 多选组。 */
-export default function CheckboxGroup({ legend, options, values, onChange, description }: CheckboxGroupProps) {
+export default function CheckboxGroup({
+  legend,
+  options,
+  values,
+  onChange,
+  description,
+  exclusiveValues = DEFAULT_EXCLUSIVE_VALUES,
+}: CheckboxGroupProps) {
   const name = useId()
   return (
     <fieldset className="choice-group">
@@ -52,10 +63,17 @@ export default function CheckboxGroup({ legend, options, values, onChange, descr
               value={option.value}
               checked={checked}
               onChange={(event) => {
-                // 勾选则加入集合，取消则从集合移除（保持原有顺序语义由调用方负责）
-                const next = event.target.checked
-                  ? [...values, option.value]
-                  : values.filter((item) => item !== option.value)
+                const exclusiveSet = new Set(exclusiveValues)
+                let next: string[]
+                if (!event.target.checked) {
+                  next = values.filter((item) => item !== option.value)
+                } else if (exclusiveSet.has(option.value)) {
+                  // “无/未见/不适用”等排他项一旦勾选，立即清空同组具体结论。
+                  next = [option.value]
+                } else {
+                  // 勾选具体结论时，自动移除全部排他项，避免产生逻辑矛盾。
+                  next = [...values.filter((item) => !exclusiveSet.has(item)), option.value]
+                }
                 onChange(next)
               }}
             />

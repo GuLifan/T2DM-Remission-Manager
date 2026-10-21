@@ -10,7 +10,7 @@
 import { useState } from 'react'
 
 import { ApiError } from '../../api/client'
-import { patientApi } from '../../api/endpoints'
+import { clinicalV03Api } from '../../api/endpoints'
 import { ErrorBanner } from '../../components'
 import type { Patient } from '../../types'
 
@@ -31,7 +31,14 @@ export function RegularCarePage({ patient, onUpdated, eventCount = 0 }: FlowPage
     setError('')
     setSubmitting(true)
     try {
-      await patientApi.reopen(patient.id)
+      await clinicalV03Api.submit(patient.id, 'supplemental-decision', patient.clinical_revision, {
+        transition_id: 'P01',
+        doctor_confirmed: true,
+        reason: '医生确认重新发起60秒缓解预评估',
+        evidence_summary: '患者意愿或临床条件发生变化，进入本次重新评估',
+        remission_termination_confirmed: false,
+        f050_med_status: null,
+      })
       onUpdated()
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : '操作失败，请重试。')

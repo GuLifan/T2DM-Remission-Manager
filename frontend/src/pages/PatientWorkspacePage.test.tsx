@@ -99,6 +99,7 @@ function stubFetch(
   const loadedPatient = options?.patient ?? PATIENT
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const url = String(input)
+    if (url.includes('/clinical-v04/records')) return Promise.resolve(jsonOk([]))
     if (url.includes('/api/patients/7/events')) return Promise.resolve(jsonOk(EVENTS))
     if (url.includes('/api/patients/7/debug/jump-state')) {
       return Promise.resolve(jsonOk({ ...loadedPatient, current_state: 'ST40', stage: null }))
@@ -254,7 +255,7 @@ describe('PatientWorkspacePage 导航规则', () => {
     expect(screen.getByRole('heading', { name: '主动管理—缓解诱导阶段' })).toBeInTheDocument()
   })
 
-  it('测试账号可让测试患者直接进入未来环节，并调用专用 debug 接口', async () => {
+  it('demo 测试账号仍不能跳过临床步骤', async () => {
     const fetchMock = stubFetch([], {
       patient: { ...PATIENT, is_test_patient: true },
       canUseTestTools: true,
@@ -276,17 +277,10 @@ describe('PatientWorkspacePage 导航规则', () => {
     )
 
     const observation = await screen.findByRole('button', { name: /缓解观察期/ })
-    expect(observation).toBeEnabled()
-    expect(screen.getByText('测试工具')).toBeInTheDocument()
-    expect(screen.getAllByText('测试患者').length).toBeGreaterThanOrEqual(1)
-
+    expect(observation).toBeDisabled()
+    expect(screen.queryByText('测试工具')).not.toBeInTheDocument()
     await user.click(observation)
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/patients/7/debug/jump-state',
-        expect.objectContaining({ method: 'POST' }),
-      )
-    })
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/debug/'))).toBe(false)
   })
 
   it('非责任医生工作台显示明确只读原因并禁用流程写控件', async () => {
@@ -306,9 +300,8 @@ describe('PatientWorkspacePage 导航规则', () => {
     expect(screen.getByRole('button', { name: '记录复评结论' })).toBeDisabled()
   })
 
-  it('管理员转移责任医生前要求二次确认并调用转移接口', async () => {
+  it('demo 管理员保留身高更正但不转移病例归属', async () => {
     const fetchMock = stubFetch()
-    const user = userEvent.setup()
     render(
       <PatientWorkspacePage
         patientId={7}
@@ -317,17 +310,9 @@ describe('PatientWorkspacePage 导航规则', () => {
       />,
     )
 
-    await user.click(await screen.findByRole('button', { name: '转移责任医生' }))
-    await user.selectOptions(screen.getByLabelText('新的责任医生'), '2')
-    await user.click(screen.getByRole('button', { name: '下一步：核对变更' }))
-    expect(screen.getByText(/将从“张医生”转给“李医生”/)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '确认转移责任医生' }))
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/patients/7/owner',
-        expect.objectContaining({ method: 'PUT' }),
-      )
-    })
+    await screen.findByText(/责任医生：张医生/);
+    expect(screen.queryByRole('button', {name: '转移责任医生'})).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/owner'))).toBe(false)
   })
 
   it('从工作台唯一入口打开真实医学依据抽屉', async () => {

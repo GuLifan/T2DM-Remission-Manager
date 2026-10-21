@@ -31,6 +31,7 @@ import type {
   TestContextOut,
   UserOut,
   ReferenceData,
+  ClinicalV03Result,
 } from '../types'
 
 /** 账号相关接口。 */
@@ -46,6 +47,7 @@ export const authApi = {
     department: string | null
     password: string
     password_confirm: string
+    invite_code?: string
   }) => api.post<{ message: string }>('/api/auth/register', payload),
   logout: () => api.post<void>('/api/auth/logout'),
   me: (signal?: AbortSignal) => api.get<UserOut>('/api/auth/me', signal),
@@ -70,6 +72,8 @@ export const patientApi = {
   reopen: (id: number) => api.post<Patient>(`/api/patients/${id}/reopen`),
   transferOwner: (id: number, ownerId: number) =>
     api.put<Patient>(`/api/patients/${id}/owner`, { owner_id: ownerId }),
+  updateHeight: (id: number, heightCm: number) =>
+    api.put<Patient>(`/api/patients/${id}/height`, { height_cm: heightCm }),
 }
 
 /** 登录前后均可读取的非敏感参考字典。 */
@@ -91,6 +95,7 @@ export const domainApi = {
 
 /** 全局只读医学依据；不依赖患者归属，但后端仍要求有效登录。 */
 export const evidenceApi = {
+  original: (key: string) => api.blob(`/api/evidence/materials/${encodeURIComponent(key)}/original`),
   status: (signal?: AbortSignal) => api.get<EvidenceStatus>('/api/evidence/status', signal),
   search: (query: string, limit = 20, signal?: AbortSignal) => {
     const params = new URLSearchParams({ q: query, limit: String(limit) })
@@ -121,7 +126,12 @@ export const flowApi = {
     }),
   acuteStabilized: (
     patientId: number,
-    payload: { stage_goal: string; interventions: string[] },
+    payload: {
+      f018_weight: number
+      f019_height: number | null
+      stage_goal: string
+      interventions: string[]
+    },
   ) =>
     api.post<FullAssessmentResult>(`/api/patients/${patientId}/pre-assessment/acute-stabilized`, {
       ...payload,
@@ -171,4 +181,21 @@ export const flowApi = {
       ...payload,
       request_id: newRequestId('post'),
     }),
+}
+
+/** 临床流程 v0.3：所有写入都携带患者版本与幂等键。 */
+export const clinicalV03Api = {
+  submit: (
+    patientId: number,
+    action: string,
+    expectedRevision: number,
+    payload: Record<string, unknown>,
+  ) => api.post<ClinicalV03Result>(`/api/patients/${patientId}/clinical-v03/${action}`, {
+    clinical_contract_version: 'v0.3',
+    request_id: newRequestId(`v03-${action}`),
+    expected_revision: expectedRevision,
+    ...payload,
+  }),
+  observation: (patientId: number, signal?: AbortSignal) =>
+    api.get<ClinicalV03Result>(`/api/patients/${patientId}/clinical-v03/observation`, signal),
 }

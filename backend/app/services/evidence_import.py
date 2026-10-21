@@ -131,7 +131,7 @@ def _sha256(path: Path) -> str:
 
 
 def _resolve_source_path(source_root: Path, relative_path: Path) -> Path:
-    """解析并约束来源路径必须位于显式指定的 _DEV 根目录内。"""
+    """解析并约束来源路径必须位于显式指定的依据资源根目录内。"""
     root = source_root.resolve()
     path = (root / relative_path).resolve()
     if not path.is_relative_to(root):

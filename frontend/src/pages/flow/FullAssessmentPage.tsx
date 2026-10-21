@@ -14,7 +14,7 @@ import { useState } from 'react'
 
 import { ApiError } from '../../api/client'
 import { flowApi, referenceApi } from '../../api/endpoints'
-import { CheckboxGroup, DateInput, ErrorBanner, FieldRow, MultiSelectWithOther, NumericInput, ResultBanner, SelectWithOther, SettingsRow } from '../../components'
+import { AssessmentMeasurementFields, CheckboxGroup, DateInput, ErrorBanner, FieldRow, MultiSelectWithOther, NumericInput, ResultBanner, SelectWithOther, SettingsRow } from '../../components'
 import { useAsync } from '../../hooks/useAsync'
 import {
   HOLD_SUPPLEMENT,
@@ -40,7 +40,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
   const [hba1c, setHba1c] = useState('')
   const [drugs, setDrugs] = useState<string[]>([])
   const [majorAdjustment, setMajorAdjustment] = useState('')
-  const [weight, setWeight] = useState(patient.weight_kg?.toString() ?? '')
+  const [weight, setWeight] = useState('')
   const [height, setHeight] = useState(patient.height_cm?.toString() ?? '')
   const [cpeptide, setCpeptide] = useState('')
   const [constraints, setConstraints] = useState<string[]>([])
@@ -58,7 +58,6 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
   const [result, setResult] = useState<FullAssessmentResult | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const bmi = weight && height ? Number(weight) / ((Number(height) / 100) ** 2) : null
 
   /** 把可空输入转成数字或 null（注意 0 是合法值，不能被吞掉）。 */
   function toNumberOrNull(value: string): number | null {
@@ -67,6 +66,10 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
 
   /** 提交完整评估与计划。 */
   async function handleSubmit() {
+    if (!weight || (patient.height_cm == null && !height)) {
+      setError(patient.height_cm == null ? '请填写本次体重和患者身高。' : '请填写本次体重。')
+      return
+    }
     setError('')
     setSubmitting(true)
     try {
@@ -76,7 +79,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
         f016_drugs: drugs.length ? drugs.join('、') : null,
         f017_major_adjustment: majorAdjustment || null,
         f018_weight: toNumberOrNull(weight),
-        f019_height: toNumberOrNull(height),
+        f019_height: patient.height_cm == null ? toNumberOrNull(height) : null,
         f022_cpeptide: cpeptide || null,
         f023_constraints: constraints,
         f024_willing: willing || null,
@@ -111,7 +114,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
 
           <h3 className="section__title">评估资料（供记录与追溯）</h3>
           <div className="form-grid">
-            <FieldRow label="既往 T2DM 诊断基础">
+            <FieldRow label="T2DM 诊断基础">
               {(fieldProps) => (
                 <SelectWithOther
                   {...fieldProps}
@@ -136,13 +139,13 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
             </FieldRow>
             <div className="field-row">
               <MultiSelectWithOther
-                legend="当前具有降糖作用的药物（可多选）"
+                legend="降糖药物"
                 options={references.data?.drug_classes ?? []}
                 values={drugs}
                 onChange={setDrugs}
               />
             </div>
-            <FieldRow label="是否处于重大治疗调整期">
+            <FieldRow label="治疗调整期" hint="当前是否处于重大治疗调整期。">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -156,36 +159,14 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
                 </select>
               )}
             </FieldRow>
-            <FieldRow label="体重（kg）">
-              {(fieldProps) => (
-                <NumericInput
-                  {...fieldProps}
-                  unit="kg"
-                  min={0.1}
-                  max={500}
-                  step={0.1}
-                  value={weight}
-                  onChange={setWeight}
-                />
-              )}
-            </FieldRow>
-            <FieldRow label="身高（cm）">
-              {(fieldProps) => (
-                <NumericInput
-                  {...fieldProps}
-                  unit="cm"
-                  min={50}
-                  max={250}
-                  step={0.1}
-                  value={height}
-                  onChange={setHeight}
-                />
-              )}
-            </FieldRow>
-            <FieldRow label="BMI" hint="沿用预评估值，可随本次身高体重更新。">
-              {(fieldProps) => <input {...fieldProps} className="input num" readOnly value={bmi && Number.isFinite(bmi) ? bmi.toFixed(1) : ''} />}
-            </FieldRow>
-            <FieldRow label="C 肽 / 胰岛功能（条件性）">
+            <AssessmentMeasurementFields
+              patient={patient}
+              weight={weight}
+              onWeightChange={setWeight}
+              height={height}
+              onHeightChange={setHeight}
+            />
+            <FieldRow label="C 肽/胰岛功能" hint="条件性填写。">
               {(fieldProps) => (
                 <input
                   {...fieldProps}
@@ -195,7 +176,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
                 />
               )}
             </FieldRow>
-            <FieldRow label="是否愿意参与至少一种可行干预">
+            <FieldRow label="干预意愿" hint="患者是否愿意参与至少一种可行干预。">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -209,7 +190,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
                 </select>
               )}
             </FieldRow>
-            <FieldRow label="是否接受阶段复评">
+            <FieldRow label="复评接受度" hint="患者是否接受阶段复评。">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -226,7 +207,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
           </div>
 
           <SettingsRow
-            label="会改变方案的管理约束（可多选）"
+            label="管理约束"
             stacked
             control={
               <CheckboxGroup
@@ -241,7 +222,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
 
         <div className="card">
           <h3 className="section__title">一次性计划决策</h3>
-          <FieldRow label="是否启动主动管理">
+          <FieldRow label="主动管理计划">
             {(fieldProps) => (
               <select
                 {...fieldProps}
@@ -258,7 +239,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
 
           {startPlan === START ? (
             <div className="form-grid">
-              <FieldRow label="当前管理阶段">
+              <FieldRow label="管理阶段">
                 {(fieldProps) => (
                   <select
                     {...fieldProps}
@@ -274,7 +255,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
                   </select>
                 )}
               </FieldRow>
-              <FieldRow label="一个主要阶段目标">
+              <FieldRow label="阶段目标">
                 {(fieldProps) => (
                   <input
                     {...fieldProps}
@@ -284,7 +265,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
                   />
                 )}
               </FieldRow>
-              <FieldRow label="首次正式复评日期" hint="留空按默认 12 周计算，可自行指定。">
+              <FieldRow label="首次复评日期" hint="留空按默认 12 周计算，可自行指定。">
                 {(fieldProps) => (
                   <DateInput
                     {...fieldProps}
@@ -306,7 +287,7 @@ export default function FullAssessmentPage({ patient, onUpdated }: FlowPageProps
           ) : null}
 
           {startPlan === HOLD_SUPPLEMENT ? (
-            <FieldRow label="需要补充的关键资料" hint="只保留真正影响启动、阶段、目标或干预的缺失资料。">
+            <FieldRow label="待补资料" hint="只保留真正影响启动、阶段、目标或干预的缺失资料。">
               {(fieldProps) => (
                 <textarea
                   {...fieldProps}

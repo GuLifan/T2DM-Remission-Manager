@@ -11,6 +11,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -22,10 +25,11 @@ router = APIRouter(prefix="/reference", tags=["参考字典"])
 
 
 @router.get("")
-def reference_data(db: Session = Depends(get_db)) -> dict[str, list[str]]:
+def reference_data(db: Session = Depends(get_db)) -> dict:
     """返回科室、诊断基础与降糖药物类别。"""
     return {
         "departments": [item.name for item in departments_repo.list_active(db)],
         "diagnosis_bases": list(DIAGNOSIS_BASES),
         "drug_classes": list(GLUCOSE_LOWERING_DRUG_CLASSES),
+        "medication_catalog": json.loads((Path(__file__).parents[1] / "domain/medication_catalog.json").read_text(encoding="utf-8")),
     }

@@ -16,12 +16,14 @@
 
 from __future__ import annotations
 
+import json
 from io import BytesIO
 
 from openpyxl import Workbook
 from sqlalchemy import select
 
 from app.models.audit import AuditLog
+from app.models.event import Event
 
 
 def _payload(mrn: str) -> dict:
@@ -204,3 +206,57 @@ def test_xlsx_import_and_measurement_bmi_snapshot(client, doctor) -> None:
     assert detail["height_cm"] == 175
     assert detail["weight_kg"] == 70
     assert detail["bmi"] == 22.9
+
+
+def test_admin_can_correct_height_with_audit_without_rewriting_history(
+    client, doctor, db_session
+) -> None:
+    """管理员更正身高会重算当前 BMI 并写审计，但历史事件测量快照保持不变。"""
+    assert doctor["user"]["role"] == "admin"
+    created = client.post(
+        "/api/patients", json=_payload("MRN-HEIGHT-ADMIN"), headers=doctor["headers"]
+    ).json()
+    patient_id = created["id"]
+    client.post(f"/api/patients/{patient_id}/reopen", headers=doctor["headers"])
+    pre = client.post(
+        f"/api/patients/{patient_id}/pre-assessment",
+        json={
+            "f001_t2dm_established": "是",
+            "f002_acute_unsafe": "否",
+            "f003_type_doubt": "否",
+            "f004_treatment_context_sufficient": "是",
+            "f005_refused": "否",
+            "f018_weight": 70,
+            "f019_height": 175,
+        },
+        headers=doctor["headers"],
+    )
+    assert pre.status_code == 200, pre.text
+
+    event = db_session.query(Event).filter(Event.patient_id == patient_id).order_by(Event.id.desc()).first()
+    assert event is not None and event.payload is not None
+    historical = json.loads(event.payload)["measurement_snapshot"]
+
+    corrected = client.put(
+        f"/api/patients/{patient_id}/height",
+        json={"height_cm": 180},
+        headers=doctor["headers"],
+    )
+    assert corrected.status_code == 200, corrected.text
+    assert corrected.json()["height_cm"] == 180
+    assert corrected.json()["bmi"] == 21.6
+
+    db_session.expire_all()
+    audit = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.action == "patient_height_update", AuditLog.target_id == str(patient_id))
+        .order_by(AuditLog.id.desc())
+        .first()
+    )
+    assert audit is not None and audit.detail is not None
+    detail = json.loads(audit.detail)
+    assert detail["old_height_cm"] == 175
+    assert detail["new_height_cm"] == 180
+
+    db_session.refresh(event)
+    assert json.loads(event.payload)["measurement_snapshot"] == historical

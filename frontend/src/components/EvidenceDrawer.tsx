@@ -71,6 +71,22 @@ export default function EvidenceDrawer({ open, onClose }: EvidenceDrawerProps) {
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [searchAttempt, setSearchAttempt] = useState(0)
+  const [originalError, setOriginalError] = useState('')
+  const [originalBusy, setOriginalBusy] = useState(false)
+  async function readOriginal(key: string, title: string) {
+    if (originalBusy) return
+    setOriginalBusy(true); setOriginalError('')
+    try {
+      const blob = await evidenceApi.original(key)
+      const url = URL.createObjectURL(blob)
+      // 登录请求取得原件后才生成临时下载地址；不在URL中暴露认证token。
+      const anchor = document.createElement('a')
+      anchor.href = url; anchor.download = `${title}.${blob.type.includes('pdf') ? 'pdf' : 'md'}`
+      anchor.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (error) {setOriginalError(error instanceof Error ? error.message : '查阅原件失败')}
+    finally {setOriginalBusy(false)}
+  }
   const drawerRef = useRef<HTMLElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const onCloseRef = useRef(onClose)
@@ -302,6 +318,8 @@ export default function EvidenceDrawer({ open, onClose }: EvidenceDrawerProps) {
             以下内容仅供查阅原始依据，不替代医生判断。
           </p>
           {content}
+          {originalError ? <ErrorBanner message={originalError} /> : null}
+          {status?.searchable ? <section aria-label="依据原件"><h3>查阅原件</h3>{status.materials.map(material => <button type="button" className="btn btn--text" disabled={originalBusy} key={material.source_key} onClick={() => void readOriginal(material.source_key, material.title)}>下载原件：{material.title}</button>)}</section> : null}
         </div>
       </aside>
     </>

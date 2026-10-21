@@ -109,7 +109,7 @@ export default function KitchenSink() {
               </span>
               <div className="card">
                 <SettingsRow
-                  label="最近一次 HbA1c"
+                  label="最近 HbA1c"
                   control={
                     <input
                       className="input num"
@@ -120,7 +120,7 @@ export default function KitchenSink() {
                   description="仅作机会分层与方案参考，不作为准入或排除条件。"
                 />
                 <SettingsRow
-                  label="当前管理阶段"
+                  label="管理阶段"
                   control={
                     <select className="select" defaultValue="缓解诱导" aria-label="当前管理阶段">
                       <option>血糖稳定</option>
@@ -129,12 +129,12 @@ export default function KitchenSink() {
                   }
                 />
                 <SettingsRow
-                  label="结构化生活方式干预开始日期"
+                  label="生活方式开始日期"
                   control={<DateInput value="" onChange={() => undefined} />}
                   description="用于计算最早可判定日期：与停药满 3 个月取较晚者。"
                 />
                 <SettingsRow
-                  label="本次复评备注"
+                  label="复评备注"
                   stacked
                   control={
                     <textarea
@@ -157,7 +157,7 @@ export default function KitchenSink() {
               </span>
               <div className="card">
                 <ChoiceGroup
-                  legend="选择本次复评的实际分支"
+                  legend="实际分支"
                   value={branch}
                   onChange={setBranch}
                   options={[
@@ -209,7 +209,7 @@ export default function KitchenSink() {
               <span className="section__description">生活方式、降糖调整、体重管理药物与代谢手术评估可以组合使用。</span>
               <div className="card">
                 <CheckboxGroup
-                  legend="本次采用的干预"
+                  legend="本次干预"
                   values={interventions}
                   onChange={setInterventions}
                   options={[
@@ -219,7 +219,7 @@ export default function KitchenSink() {
                     { value: '代谢手术评估', label: '代谢手术评估' },
                   ]}
                 />
-                <FieldRow label="一个主要阶段目标" hint="同一次复评只设一个主要目标。">
+                <FieldRow label="阶段目标" hint="同一次复评只设一个主要目标。">
                   {(fieldProps) => (
                     <input
                       {...fieldProps}

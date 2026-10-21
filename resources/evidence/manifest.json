@@ -1,0 +1,22 @@
+[
+  {
+    "path": "医学依据/2型糖尿病缓解中国专家共识-2021.pdf",
+    "sha256": "394b6706152f91b98ee0cea57b70665c0fc3ab903e59f42cb3f9e506b13c1586",
+    "bytes": 709791
+  },
+  {
+    "path": "医学依据/中国糖尿病防治指南（2024版）.pdf",
+    "sha256": "4884c911879af5aa55a5f5cbd825fdedec0b168c34fde8781bc39d35b4b00c22",
+    "bytes": 6186098
+  },
+  {
+    "path": "医学依据/Expert Consensus on Type 2 Diabetes Remission(1).pdf",
+    "sha256": "c57447caa33fe9d56ff499d3b6e90b1fd81ff2df20ca7e08203fa07bd2f25111",
+    "bytes": 621916
+  },
+  {
+    "path": "甲方材料/md派生/临床流程锁定稿_v1.0_20260806.md",
+    "sha256": "6506626276537fb3294b3e2484a7dd974a9bd9243b1d37489ca227f4179f8ce1",
+    "bytes": 15796
+  }
+]

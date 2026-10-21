@@ -6,4 +6,4 @@
           / repository（数据访问）/ models（ORM 与模式）/ core（时钟、日志、异常）/ evidence（依据检索）。
 """
 
-__version__ = "1.0.0"
+__version__ = "0.4.2"

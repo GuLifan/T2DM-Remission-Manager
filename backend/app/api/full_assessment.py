@@ -16,15 +16,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.api.flow_common import get_patient_or_404, record_outcome, require_state
-from app.core.exceptions import BusinessRuleError
+from app.api.flow_common import get_patient_or_404, prepare_measurement_snapshot, record_outcome, require_state
 from app.core.test_mode import effective_today_for_patient
 from app.domain.states import ST00, ST20, ST31, ST32
 from app.models.clinical import FullAssessmentInput, FullAssessmentResult
 from app.models.user import User
 from app.repository.database import get_db
 from app.services.full_assessment import evaluate_full_assessment
-from app.utils.measurements import calculate_bmi
 
 router = APIRouter(prefix="/patients", tags=["单元2：完整评估与计划"])
 
@@ -47,16 +45,11 @@ def submit_full_assessment(
         effective_today_for_patient(current_user, patient),
     )
 
-    # 完整评估沿用预评估测量值；若医生本次修改，也必须成对提交并同步最新 BMI 快照。
-    if (payload.f018_weight is None) != (payload.f019_height is None):
-        raise BusinessRuleError("身高和体重需同时填写，或同时留空。", code="MEASUREMENTS_INCOMPLETE")
-    measurement_updates: dict[str, object] = {}
-    if payload.f018_weight is not None and payload.f019_height is not None:
-        measurement_updates = {
-            "weight_kg": payload.f018_weight,
-            "height_cm": payload.f019_height,
-            "bmi": calculate_bmi(payload.f019_height, payload.f018_weight),
-        }
+    measurement_snapshot, measurement_updates = prepare_measurement_snapshot(
+        patient,
+        weight_kg=payload.f018_weight,
+        height_cm=payload.f019_height,
+    )
 
     # 按结论更新患者档案字段：启动时写入计划，暂缓时保持不变，不启动时清空计划
     if result.target_state in (ST31, ST32):
@@ -88,7 +81,7 @@ def submit_full_assessment(
         rule_id=result.rule_id,
         template_id=result.template_id,
         output_text=result.output_text,
-        payload=payload.model_dump(mode="json"),
+        payload={**payload.model_dump(mode="json"), "measurement_snapshot": measurement_snapshot},
         request_id=payload.request_id,
         updates=updates,
     )

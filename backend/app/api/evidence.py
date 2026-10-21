@@ -15,9 +15,11 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
+from app.config import PROJECT_ROOT
 from app.core.exceptions import BusinessRuleError
 from app.models.schemas import (
     EvidenceMaterialStatusOut,
@@ -29,9 +31,22 @@ from app.models.user import User
 from app.repository import evidence as evidence_repo
 from app.repository.audit import write_audit
 from app.repository.database import get_db
-from app.services.evidence_import import DEFAULT_EVIDENCE_SOURCES
+from app.services.evidence_import import DEFAULT_EVIDENCE_SOURCES, _sha256
 
 router = APIRouter(prefix="/evidence", tags=["医学依据"])
+
+
+@router.get("/materials/{source_key}/original")
+def original(source_key: str, _user: User = Depends(get_current_user)) -> FileResponse:
+    """只允许稳定白名单的原件；不接受路径参数、不提供免登录静态目录。"""
+    source = next((s for s in DEFAULT_EVIDENCE_SOURCES if s.source_key == source_key), None)
+    if source is None:
+        raise BusinessRuleError("未找到该依据材料。", "EVIDENCE_UNKNOWN")
+    path = PROJECT_ROOT / "resources" / "evidence" / source.relative_path
+    if not path.is_file() or _sha256(path) != source.expected_sha256:
+        raise BusinessRuleError("依据原件缺失或校验失败，请联系维护人员。", "EVIDENCE_FILE_INVALID")
+    return FileResponse(path, media_type="application/pdf" if source.source_type == "pdf" else "text/markdown; charset=utf-8",
+                        filename=path.name, content_disposition_type="inline")
 
 
 def _status(db: Session) -> EvidenceStatusOut:

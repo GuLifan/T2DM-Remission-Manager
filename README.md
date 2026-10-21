@@ -1,144 +1,60 @@
-# 早期2型糖尿病缓解管理软件（ETMMS）v1.0
+# T2DM Remission Manager — ETMMS 0.4.2
 
-> 给门诊医生使用的 2 型糖尿病缓解管理流程工具：**系统负责计算与提醒，医生负责医学决定。**
+**Public testing version deployed on Sealos Cloud, running in a Linux container environment similar to Docker.**
 
----
+ETMMS supports a clinician-led early type 2 diabetes remission management workflow across E1–E5: pre-assessment, full assessment, phase review, observation and remission assessment, and post-remission follow-up. This repository contains the redeveloped 0.4.2 codebase, replacing the earlier implementation while retaining its Git history.
 
-## 一、这个软件做什么
+This is a public evaluation build for **simulated information only**, not a validated production medical system. Clinical conclusions require the clinician's explicit decisions. No accounts, patient records, secrets or preloaded cases are included.
 
-ETMMS 是一台**流程导航仪**，不是预测器。它把已锁定的门诊流程固定下来：
+## Deploy on Sealos
 
-**患者现在在哪一步 → 医生要判断什么 → 系统给提示和时间 → 医学结论由医生确认。**
+Use a Node.js 22 Devbox (22.12+), install uv and Python 3.13, configure a persistent data directory, build the frontend, and expose container port **8088** over HTTPS. The backend serves both the API and the built frontend. Use **one instance / one worker** with SQLite.
 
-系统只做四件事：计算日期、给出提醒、拦截不合规操作、记录可追溯的事件流水。
+See the complete [Sealos installation and upgrade guide](docs/DEPLOY_SEALOS.md), including environment setup, first administrator creation, invitations, evidence resources, restart, backup and rollback. `start.sh` manages a background service in Devbox; `entrypoint.sh` is the foreground container entrypoint. No Docker image or Docker Compose configuration is supplied.
 
-系统**明确不做**：不计算个人缓解概率、不用 ABCD/病程/BMI/HbA1c/胰岛素/C 肽做刚性准入、不自动停药减药、不自动确认缓解。
-
-### 六个流程单元与九个状态
-
-| 单元 | 名称 | 状态 | 性质 |
-| --- | --- | --- | --- |
-| — | 常规糖尿病综合管理 | ST00 | 入口/返回态 |
-| 1 | 60秒缓解预评估 | ST10 | 医生决策事件 |
-| 2 | 完整评估并形成主动管理计划 | ST20 | 医生决策事件（一次性） |
-| 3 | 阶段复评与治疗调整 | ST31 / ST32 | 可重复的医生决策事件 |
-| 4 | 缓解观察期 | ST40 | **系统自动状态**（无医生点击） |
-| 5 | 缓解判定 | ST50 | 医生确认事件 |
-| 6 | 缓解后复评 | ST60 | 可重复的医生决策事件 |
-| — | 关闭 T2DM 缓解路径 | ST99 | 终态 |
-
----
-
-## 二、目录结构
-
-```txt
-ETMMS_V1.0/
-├─ README.md          本文件：项目说明与开发指引
-├─ UI.md              UI 唯一真源（Chrome / Material Design 3，可执行合同）
-├─ ACCESS.md          Agent 高权限行为日志（开发者审计用，非用户文档）
-├─ CHANGELOG.md       版本变更记录
-├─ MAPPING.md         临床规则 / 字段 / 输出模板 → 代码与测试 的映射清单
-├─ _DEV/              项目本身的描述与甲方依据（只读参考，不修改原件）
-│   ├─ 甲方材料/       临床流程锁定稿、任务书、临床流程实现表（原件 + md 派生）
-│   ├─ 医学依据/       中文缓解共识、国际缓解共识、中国糖尿病防治指南 2024 版
-│   ├─ 历史参考/       V0.1 的开发规划与 macOS 版 UI 规范（历史留存，不作为依据）
-│   └─ PRINCIPLE.md    业务本质说明
-├─ _SPEC/             纲领性文件（约束性，实现前必须先读）
-├─ backend/           FastAPI 后端（虚拟环境在 backend/.venv）
-├─ frontend/          React + TypeScript 前端
-├─ data/              测试数据、运行时数据库、依据资料检索索引
-├─ scripts/           开发与构建脚本
-└─ 交付物/            最终交付物（实现表、状态图、病例走查、便携版说明）
-```
-
----
-
-## 三、依据优先级（锁定）
-
-| 优先级 | 材料 | 使用方式 |
-| --- | --- | --- |
-| 1 | 《临床流程锁定稿 v1.0》 | **唯一临床主依据**；冲突时以本文件为准 |
-| 2 | 《学生首轮任务与联合交付要求 v1.0》 | 交付要求（V1.0 已升级为"直接交付成品"） |
-| 3 | 中国 T2DM 缓解专家共识 / 国际缓解共识 / 中国糖尿病防治指南 2024 版 | 仅用于核对医学依据与出处 |
-| 4 | `_DEV` 实现表系列（md 派生） | 规则的字段级展开；与锁定稿冲突时以锁定稿为准 |
-
-依据材料原件位于 `_DEV\甲方材料\原件` 与 `_DEV\医学依据`，可信度高于任何派生版本。
-
----
-
-## 四、医学红线（实现不得触犯）
-
-1. 不新增医生临床节点；状态、标签、自动规则不得伪装成新临床步骤
-2. 不把病程、BMI、HbA1c、胰岛素、C 肽、ABCD 转化为刚性准入或排除条件
-3. 不把"病程长 / BMI 正常 / 用胰岛素 / HbA1c 高 / C 肽缺失"自动判定为不适合缓解
-4. 急性安全、分型存疑、资料缺失只是**暂缓原因**，不是与三类结论并列的永久状态
-5. 不自动停药减药；不为获得缓解标签提示停用器官/体重获益药物
-6. 不在多个页面重复收集病程、BMI、分型、C 肽、并发症
-7. 不设置"停药确认页面"、不设置"进入观察期"按钮
-8. 不把"治疗下血糖达非糖尿病范围"写成已缓解、缓解失败或必须停药
-9. 不自行设定指南未支持的医学阈值与固定时间；存疑一律进问题清单
-10. 关键临床结论必须由医生确认，前台只出现自然语言（不出现状态代码、规则 ID、字段 ID）
-
----
-
-## 五、环境要求
-
-| 组件 | 版本 | 说明 |
-| --- | --- | --- |
-| Python | 3.13 或 3.14（M1 实测后锁定） | 虚拟环境一律建在 `backend/.venv`，**不改动全局 Python 环境** |
-| uv | 最新 | 依赖与虚拟环境管理 |
-| Node.js | 22 LTS 或以上 | 前端构建 |
-| 浏览器 | Google Chrome | 运行与视觉比对基准 |
-
----
-
-## 六、开发态启动（M1 完成后可用）
+After first-time setup:
 
 ```bash
-# 后端（首次会创建项目内虚拟环境）
+bash start.sh
+bash start.sh status
+curl --fail http://127.0.0.1:8088/api/health
+# Stop before maintenance:
+bash start.sh stop
+```
+
+The health response must identify version `0.4.2`. Re-run `bash start.sh` after a Devbox restart; this repository does not install an automatic boot task. Verify the chosen data directory is persistent in the actual Sealos environment.
+
+## Accounts, dates and history
+
+- Create the first administrator interactively, then create invitations in **账号管理**. Doctors register with invitations and receive an empty case list.
+- Doctors own separate cases and cannot change the business date. Administrators can change only their own date under **账号管理 → 日期维护**.
+- Record corrections append history. “归档并新建” preserves the prior round as read-only history.
+- Concurrent stale submissions are rejected. Sharing a browser profile shares its login; use separate profiles for independently signed-in users.
+- Existing upgrades preserve the database, signing key and `.env`; do not initialize the administrator again.
+
+Read the [Chinese user guide](docs/使用说明_v0.4.2.md).
+
+## Private evidence resources
+
+The repository includes the evidence importer and a SHA-256 manifest, **not the medical PDFs or private stakeholder originals**. Authorized operators supply the four matching files privately and run the importer. Core clinical workflow runs without these files; full-text evidence search and original downloads require the private import. Do not expose that directory as a public static path. See [resource instructions](docs/EVIDENCE.md).
+
+## Development and verification
+
+```bash
 cd backend
-uv sync
-uv run uvicorn app.main:app --reload --port 8088
-
-# 前端
-cd frontend
-npm install
-npm run dev
+uv sync --frozen
+uv run --no-sync pytest
+cd ../frontend
+npm ci
+npm test
+npm run lint
+npm run build
 ```
 
-一键启动：`python scripts\dev.py`（M1 交付）。
+Tests use isolated synthetic data; they never create deployment patients. See [validation scope](docs/VALIDATION.md) and the [specifications](_SPEC/README.md). API/input versions remain clinical `v0.3` and input `v0.4`; the Alembic head is `d04data001`.
 
----
+## Branch policy and security
 
-## 七、便携版打包（M7 交付）
+The initial 0.4.2 publication synchronizes `main` and `develop`. Subsequent development goes to **`develop`**; pushing to **`main` requires Lifan's explicit instruction**. `origin` is the remote name, not a release branch. See [contribution rules](CONTRIBUTING.md) and [security boundaries](SECURITY.md).
 
-目标：**在未安装 Python / Node 的 Windows 机器上双击即用**。
-
-```bash
-python scripts\build.py     # 前端构建 → 后端静态托管 → PyInstaller onedir 打包
-```
-
-产物落在 `release\`，含启动器与说明文件；首次运行在用户数据目录自建数据库。详细路线见 `_SPEC/07` 与 `_SPEC/08`。
-
----
-
-## 八、开发约定
-
-- **SPEC 驱动**：先改 `_SPEC`，评审通过后再改代码；实现与规范不一致时二者取一，并把差异记入 `_SPEC/06`
-- **临床规则映射**：任何临床逻辑改动必须同步更新 `MAPPING.md`
-- **UI**：一切样式取自 `UI.md` 的 Token；新增 Token 必须登记，未使用的 Token 视为缺陷
-- **注释**：代码注释一律简体中文，文件头与函数块注释模板见 `UI.md` 第三部分
-- **Git**：`main` / `develop` / `feat/*`，提交信息遵循 Conventional Commits
-- **测试**：临床逻辑改动的合并前提是测试全绿（含 3 个锁定病例端到端）
-
----
-
-## 九、文档索引
-
-| 文档 | 用途 |
-| --- | --- |
-| `UI.md` | UI 与代码注释的唯一真源 |
-| `_SPEC/01`–`08` | 项目边界、功能需求、状态机、字段模板、验收、问题裁决、技术架构、实施计划 |
-| `MAPPING.md` | 临床规则 → 代码 → 测试 的追踪表 |
-| `ACCESS.md` | Agent 高权限行为审计日志 |
-| `_DEV/PRINCIPLE.md` | 业务本质（为什么这样设计） |
+The current source tree excludes local histories, private source documents and credentials. Older commits remain accessible because the owner requested that Git history be preserved; this publication is not a history purge. No new license grant or redistribution permission for third-party medical documents is implied.

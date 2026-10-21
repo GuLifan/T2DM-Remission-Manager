@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_serializer, field_validator, model_validator
 
 # ===================== 账号与登录 =====================
 
@@ -43,6 +43,7 @@ class RegisterIn(BaseModel):
     department: str | None = Field(default=None, max_length=128, description="所属科室（选填）")
     password: str = Field(min_length=8, max_length=128)
     password_confirm: str = Field(min_length=8, max_length=128)
+    invite_code: str = Field(default="", max_length=128)
 
     @model_validator(mode="after")
     def passwords_match(self) -> RegisterIn:
@@ -77,6 +78,11 @@ class UserOut(BaseModel):
     role: str
     is_test_account: bool = False
     simulated_date: date | None = None
+
+    @field_serializer("simulated_date")
+    def serialize_effective_date_override(self, value: date | None) -> date | None:
+        """普通账号的旧日期仅留存于原库，不向当前账号视图提供为可用日期。"""
+        return value if self.role == "admin" else None
 
 
 class AssignableDoctorOut(BaseModel):
@@ -127,6 +133,12 @@ class OwnershipTransferIn(BaseModel):
     owner_id: int = Field(gt=0, description="新的责任医生账号 ID")
 
 
+class PatientHeightUpdateIn(BaseModel):
+    """管理员更正已确认身高；历史事件测量快照保持不变。"""
+
+    height_cm: float = Field(ge=50, le=250, description="更正后的身高（cm）")
+
+
 class PatientOut(BaseModel):
     """患者档案响应。current_state 为内部状态代码，仅供前端路由使用，**不得直接展示给医生**。"""
 
@@ -137,6 +149,12 @@ class PatientOut(BaseModel):
     gender: str
     birth_date: date
     medical_record_no: str
+
+    @computed_field
+    @property
+    def display_record_no(self) -> str:
+        """稳定且唯一的业务展示编号；原编号及所有历史引用保持原值。"""
+        return f"ETMMS-{self.id:06d}"
     department: str
     contact_phone: str | None = None
     created_by: int | None = None
@@ -145,6 +163,8 @@ class PatientOut(BaseModel):
     can_edit: bool = False
     profile_complete: bool = True
     is_test_patient: bool = False
+    archived: bool = False
+    demo_case: int | None = None
     height_cm: float | None = None
     weight_kg: float | None = None
     bmi: float | None = None
@@ -160,6 +180,14 @@ class PatientOut(BaseModel):
     remission_confirmed_date: date | None = None
     has_glucose_lowering_drug: bool | None = None
     drug_purpose: str | None = None
+    clinical_contract_version: str = "v1.0"
+    clinical_revision: int = 1
+    observation_status: str = "none"
+    observation_cycle: int = 0
+    applicable_interventions: list[str] | None = None
+    actual_stop_confirmed: bool | None = None
+    current_remission_evaluation: str | None = None
+    objective_assessment_event_id: int | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -199,6 +227,8 @@ class EventOut(BaseModel):
     output_text: str
     operator_id: int
     simulated_date: date | None = None
+    clinical_contract_version: str = "v1.0"
+    transition_ids: list[str] | None = None
     created_at: datetime
 
 
@@ -217,6 +247,7 @@ class TestContextOut(BaseModel):
 
     test_mode_enabled: bool
     can_use_test_tools: bool
+    can_manage_date: bool = False
     real_date: date
     effective_date: date
     simulated_date: date | None = None

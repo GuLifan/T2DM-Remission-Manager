@@ -19,7 +19,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 
 # 迁移必须创建的核心表
-EXPECTED_TABLES = {"users", "patients", "events", "audit_log", "app_meta", "alembic_version"}
+EXPECTED_TABLES = {"users", "patients", "events", "audit_log", "app_meta", "alembic_version", "clinical_records"}
 
 
 def test_health_ok(client) -> None:
@@ -28,7 +28,7 @@ def test_health_ok(client) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
-    assert body["version"].startswith("1.")
+    assert body["version"] == "0.4.2"
 
 
 def test_schema_created_by_migration(client, db_session) -> None:

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -41,6 +41,8 @@ class Patient(Base):
     profile_complete: Mapped[bool] = mapped_column(Boolean, default=True)
     # 测试患者标记：测试跳转与模拟日期只能作用于此类患者
     is_test_patient: Mapped[bool] = mapped_column(Boolean, default=False)
+    archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    demo_case: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # 最新身高、体重与 BMI 快照；第二批不建趋势表，不参与临床准入
     height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -68,6 +70,23 @@ class Patient(Base):
     # 最近一次医生确认的用药状态：是否有降糖作用药物（F053）与主要用途（F054）
     has_glucose_lowering_drug: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     drug_purpose: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
+    # v0.3迁移只添加工程事实，不推断/撤销既往临床结论。
+    # 未接入新流程前仍是v1.0；旧ST40/ST60由迁移显式标记待核对。
+    clinical_contract_version: Mapped[str] = mapped_column(String(16), default="v1.0")
+    clinical_revision: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    observation_status: Mapped[str] = mapped_column(String(32), default="none")
+    observation_cycle: Mapped[int] = mapped_column(Integer, default=0)
+    applicable_interventions: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    actual_stop_confirmed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    current_remission_evaluation: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # 确认凭最近一次有效核对事件+患者版本+事实摘要，不以任意历史达标作为资格。
+    objective_assessment_event_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    objective_assessment_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    objective_assessment_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # ORM对所有患者写入进行乐观并发校验，防止两个医生互相覆盖最新事实。
+    __mapper_args__ = {"version_id_col": clinical_revision}
 
     # 建档与更新时间
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)

@@ -15,16 +15,21 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import StaleDataError
 
 from app import __version__
 from app.api.router import api_router
 from app.config import get_settings
+from app.core.demo_guard import guard
 from app.core.exceptions import EtmmsError
 from app.core.logging import configure_logging
 from app.repository.migrations import run_migrations
@@ -54,10 +59,32 @@ app = FastAPI(
     version=__version__,
     description="门诊医生使用的 2 型糖尿病缓解管理流程工具：系统负责计算与提醒，医生负责医学决定。",
     lifespan=lifespan,
+    docs_url=None if get_settings().demo_mode else "/docs",
+    redoc_url=None if get_settings().demo_mode else "/redoc",
+    openapi_url=None if get_settings().demo_mode else "/openapi.json",
 )
+app.middleware("http")(guard)
 
 # 注册业务路由（账号、患者档案；临床流程接口在 M4 接入）
 app.include_router(api_router)
+
+
+@app.exception_handler(RequestValidationError)
+async def _handle_input_validation(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    """返回医师可读核对提示，不反射含密码/邀请码的原始请求载荷。"""
+    messages = []
+    for error in exc.errors():
+        message = error.get("msg", "").removeprefix("Value error, ")
+        if re.search(r"[\u4e00-\u9fff]", message):
+            messages.append(message)
+    detail = "；".join(dict.fromkeys(messages)) or "请核对必填项、日期、数值范围及本次选择后重试。"
+    return JSONResponse(status_code=422, content={"detail": detail, "code": "INPUT_INVALID"})
+
+
+@app.exception_handler(IntegrityError)
+async def _handle_unique_conflict(_request: Request, _exc: IntegrityError) -> JSONResponse:
+    """并发重复注册等由数据库约束兜底；会话关闭回滚，不向公网暴露 SQL。"""
+    return JSONResponse(status_code=409, content={"detail": "记录已存在或已被其他请求更新，请刷新后重试。"})
 
 
 @app.exception_handler(EtmmsError)
@@ -76,6 +103,12 @@ def health() -> dict[str, str]:
     return {"status": "ok", "version": __version__}
 
 
+@app.exception_handler(StaleDataError)
+async def _handle_concurrent_patient_write(_request: Request, _exc: StaleDataError) -> JSONResponse:
+    """档案/管理员更正等非临床写入也受版本锁保护，不向医生暴露堆栈。"""
+    return JSONResponse(status_code=409, content={"detail": "患者资料已更新，请刷新后重新核对。", "code": "STALE_PATIENT"})
+
+
 # ===== 前端静态资源（开发态 frontend/dist，打包态 app/static）=====
 _STATIC_DIR = get_settings().frontend_dist_dir
 if (_STATIC_DIR / "index.html").exists():
@@ -90,4 +123,6 @@ if (_STATIC_DIR / "index.html").exists():
         时请求会打到后端，必须返回 index.html 由前端接管路由。
         该路由注册在最后，因此 /api/** 与 /docs 等更具体的路由优先匹配。
         """
+        if full_path.startswith("api/") or full_path in {"docs", "redoc", "openapi.json"}:
+            raise HTTPException(status_code=404, detail="未找到该入口。")
         return FileResponse(_STATIC_DIR / "index.html")

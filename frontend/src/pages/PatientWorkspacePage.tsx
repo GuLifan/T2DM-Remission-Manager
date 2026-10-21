@@ -1,3 +1,4 @@
+import { eventText, patientNumber } from '../presentation'
 /**
  * 页面名称：PatientWorkspacePage.tsx
  * 所属层级：页面组件（pages）
@@ -16,21 +17,19 @@
 
 import { useMemo, useState } from 'react'
 
-import { ApiError } from '../api/client'
-import { authApi, domainApi, patientApi, referenceApi, testSupportApi } from '../api/endpoints'
+import { domainApi, patientApi, referenceApi, testSupportApi } from '../api/endpoints'
 import {
   DateControl,
   ErrorBanner,
   EvidenceDrawer,
+  HeightCorrectionDialog,
   LoadingBlock,
-  OwnershipTransferDialog,
   PageHeader,
   PatientProfileForm,
   PermissionNotice,
   SideNav,
   StatusBadge,
   TaskPanel,
-  TestToolsPanel,
 } from '../components'
 import type { NavItem } from '../components'
 import { useAsync } from '../hooks/useAsync'
@@ -42,6 +41,9 @@ import PostRemissionPage from './flow/PostRemissionPage'
 import PreAssessmentPage from './flow/PreAssessmentPage'
 import RemissionJudgePage from './flow/RemissionJudgePage'
 import { ClosedPathPage, RegularCarePage } from './flow/SimplePages'
+import ClinicalPage from './clinical/ClinicalPage'
+import HistoryDetail from './clinical/HistoryDetail'
+import RecordCorrections from './clinical/RecordCorrections'
 
 interface WorkspaceProps {
   patientId: number
@@ -67,43 +69,18 @@ const TASK_DESCRIPTIONS: Record<string, string> = {
 export default function PatientWorkspacePage({ patientId, currentUser, onBack }: WorkspaceProps) {
   const patient = useAsync((signal) => patientApi.get(patientId, signal), [patientId])
   const [viewUnitKey, setViewUnitKey] = useState<string | null>(null)
+  const [navOpen, setNavOpen] = useState(false)
   const [evidenceOpen, setEvidenceOpen] = useState(false)
-  const [jumping, setJumping] = useState(false)
-  const [jumpError, setJumpError] = useState('')
-  const [transferError, setTransferError] = useState('')
-  const [transferring, setTransferring] = useState(false)
-
   // 流程单元定义由后端导出（前端不硬编码）
   const flowUnits = useAsync((signal) => domainApi.flowUnits(signal), [])
   const states = useAsync((signal) => domainApi.states(signal), [])
   const events = useAsync((signal) => patientApi.events(patientId, signal), [patientId])
   const testContext = useAsync((signal) => testSupportApi.context(signal), [])
   const references = useAsync((signal) => referenceApi.get(signal), [])
-  const assignableDoctors = useAsync(
-    (signal) => currentUser.role === 'admin' ? authApi.assignableDoctors(signal) : Promise.resolve([]),
-    [currentUser.role],
-  )
-
   // 测试入口必须同时满足：后端开放能力 + 当前患者明确标记为测试患者
   const testToolsEnabled = Boolean(
     testContext.data?.can_use_test_tools && patient.data?.is_test_patient && patient.data?.can_edit,
   )
-
-  /** 只有管理员会看到入口；后端仍独立执行正式角色校验。 */
-  async function transferOwner(ownerId: number) {
-    setTransferError('')
-    setTransferring(true)
-    try {
-      await patientApi.transferOwner(patientId, ownerId)
-      patient.reload()
-    } catch (caught) {
-      const message = caught instanceof ApiError ? caught.message : '转移责任医生失败，请重试。'
-      setTransferError(message)
-      throw caught
-    } finally {
-      setTransferring(false)
-    }
-  }
 
   /** 当前状态所属单元序号（用于判断已完成/未到达）。 */
   const currentIndex = useMemo(() => {
@@ -122,34 +99,18 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
       active: viewUnitKey ? unit.key === viewUnitKey : unit.states.includes(patient.data!.current_state),
       done: unit.index < currentIndex,
       // 未到达的环节禁用；已完成与当前环节可点击
-      locked: testToolsEnabled ? false : unit.index > currentIndex,
+      locked: unit.index > currentIndex,
     }))
   }, [flowUnits.data, patient.data, currentIndex, viewUnitKey, testToolsEnabled])
 
-  /** 使用专用测试接口切换状态；正式状态机不受影响。 */
-  async function jumpToState(targetState: string) {
-    setJumping(true)
-    setJumpError('')
-    try {
-      await testSupportApi.jumpState(patientId, targetState)
-      setViewUnitKey(null)
-      patient.reload()
-      events.reload()
-    } catch (caught) {
-      setJumpError(caught instanceof ApiError ? caught.message : '切换测试环节失败，请重试。')
-    } finally {
-      setJumping(false)
-    }
-  }
+
 
   /** 处理左侧导航：测试患者可直接进入未来环节，普通患者仍按正式流程锁定。 */
   function selectUnit(key: string) {
+    setNavOpen(false)
     const unit = flowUnits.data?.find((item) => item.key === key)
     if (!unit) return
-    if (testToolsEnabled && unit.index > currentIndex) {
-      void jumpToState(unit.states[0])
-      return
-    }
+    if (unit.index > currentIndex) return
     // 点击当前环节等于回到“当前步骤”视图；点击已完成环节进入只读回看
     setViewUnitKey(key === navItems.find((item) => item.active)?.key && !viewUnitKey ? null : key)
   }
@@ -169,6 +130,9 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
       patient: loaded,
       eventCount: events.data?.total ?? 0,
       onUpdated: () => { patient.reload(); events.reload() },
+    }
+    if (loaded.clinical_contract_version === 'v0.3') {
+      return <ClinicalPage key={`${loaded.id}:${loaded.current_state}`} patient={loaded} onUpdated={props.onUpdated} />
     }
     switch (loaded.current_state) {
       case 'ST00':
@@ -194,7 +158,7 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
     }
   }
 
-  if (patient.loading) return <LoadingBlock message="正在读取患者信息…" />
+  if (patient.loading && !patient.data) return <LoadingBlock message="正在读取患者信息…" />
   if (patient.error || !patient.data) {
     return (
       <ErrorBanner
@@ -213,8 +177,9 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
     states.data?.find((state) => state.code === loaded.current_state)?.name ?? '当前管理环节'
 
   return (
-    <div className="app-shell">
-      <nav className="app-shell__nav">
+    <div className={`app-shell${navOpen ? ' app-shell--nav-open' : ''}`}>
+      <button type="button" className="btn btn--outlined workspace-nav-toggle" aria-expanded={navOpen} aria-controls="workspace-navigation" onClick={() => setNavOpen(value => !value)}>{navOpen ? '收起管理路径' : '展开管理路径'} · {currentStateName}</button>
+      <nav id="workspace-navigation" className="app-shell__nav" aria-label="管理路径">
         <button type="button" className="side-nav__item" onClick={onBack}>
           <span className="side-nav__index" aria-hidden="true">
             ←
@@ -239,11 +204,11 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
       <div className="app-shell__main">
         <PageHeader
           title={viewUnitKey ? `${navItems.find((item) => item.key === viewUnitKey)?.label ?? ''}（回看）` : currentStateName}
-          context={`${loaded.name} · ${loaded.gender} · 住院号 ${loaded.medical_record_no}${loaded.department ? ` · ${loaded.department}` : ''} · 责任医生 ${loaded.owner_display_name ?? '未指定'} · 当前账号 ${currentUser.display_name}`}
+          context={`${loaded.name} · ${loaded.gender} · 病例编号 ${patientNumber(loaded)}${loaded.department ? ` · ${loaded.department}` : ''} · 责任医生 ${loaded.owner_display_name ?? '未指定'} · 当前账号 ${currentUser.display_name}`}
           actions={
             <>
               <DateControl onDateChanged={onBack} />
-              {loaded.is_test_patient ? <StatusBadge tone="neutral">测试患者</StatusBadge> : null}
+
               <StatusBadge tone="neutral">{currentStateName}</StatusBadge>
               <button type="button" className="btn btn--text" onClick={() => setEvidenceOpen(true)}>
                 查阅医学依据
@@ -257,21 +222,15 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
             {flowUnits.error ? <ErrorBanner message={flowUnits.error} /> : null}
             {states.error ? <ErrorBanner message={states.error} /> : null}
             {testContext.error ? <ErrorBanner message={testContext.error} /> : null}
-            {assignableDoctors.error && currentUser.role === 'admin' ? (
-              <ErrorBanner message={assignableDoctors.error} />
-            ) : null}
-
             {!loaded.can_edit ? <PermissionNotice ownerName={loaded.owner_display_name} /> : null}
-            {currentUser.role === 'admin' ? (
+            {loaded.archived ? <div className="card card--muted">此病例已归档，仅供回看。请返回患者工作台打开当前病例。</div> : null}
+            {currentUser.role === 'admin' && !loaded.archived ? (
               <div className="ownership-toolbar">
-                <span>当前责任医生：{loaded.owner_display_name ?? '未指定'}</span>
-                <OwnershipTransferDialog
-                  patient={loaded}
-                  doctors={assignableDoctors.data ?? []}
-                  transferring={transferring}
-                  error={transferError}
-                  onTransfer={transferOwner}
-                />
+                <span>责任医生：{loaded.owner_display_name ?? '未指定'} · 身高：{loaded.height_cm == null ? '未确认' : `${loaded.height_cm} cm`}</span>
+                <div className="page__actions">
+                  <HeightCorrectionDialog patient={loaded} onSaved={patient.reload} />
+
+                </div>
               </div>
             ) : null}
 
@@ -283,23 +242,13 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
                   onSaved={() => patient.reload()}
                 />
               </fieldset>
-            ) : !viewUnitKey ? (
+            ) : !viewUnitKey && loaded.clinical_contract_version !== 'v0.3' ? (
               <TaskPanel
                 title={currentStateName}
                 description={TASK_DESCRIPTIONS[loaded.current_state] ?? '请完成当前环节要求。'}
               >
-                {loaded.is_test_patient ? '当前为测试患者；测试行为会单独留痕。' : undefined}
+                {'请按当前环节要求完成记录。'}
               </TaskPanel>
-            ) : null}
-
-            {loaded.profile_complete !== false && testToolsEnabled && states.data && !viewUnitKey ? (
-              <TestToolsPanel
-                states={states.data}
-                currentState={loaded.current_state}
-                jumping={jumping}
-                error={jumpError}
-                onJump={(targetState) => void jumpToState(targetState)}
-              />
             ) : null}
 
             {loaded.profile_complete === false ? null : viewUnitKey ? (
@@ -307,7 +256,7 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
               <section className="section">
                 <h2 className="section__title">该环节的历史记录</h2>
                 <p className="section__description">
-                  回看仅展示当时记录的自然语言结论，不提供修改入口；如需变更请回到当前环节处理。
+                  回看当时的完整评估资料与结论；资料补正另留记录，原结论保持不变。
                 </p>
                 {eventsOfUnit(viewUnitKey).length === 0 ? (
                   <div className="card card--muted">该环节暂无记录。</div>
@@ -318,7 +267,8 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
                         <span className="event-item__meta">
                           {event.created_at.replace('T', ' ').slice(0, 16)}
                         </span>
-                        <span className="event-item__text">{event.output_text}</span>
+                        <span className="event-item__text">{eventText(event.output_text, event.source)}</span>
+                        <HistoryDetail patientId={loaded.id} eventId={event.id} />
                       </li>
                     ))}
                   </ul>
@@ -337,10 +287,11 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
               </fieldset>
             )}
 
+            {loaded.profile_complete !== false ? <RecordCorrections patient={loaded} onUpdated={() => {patient.reload(); events.reload()}} /> : null}
             {loaded.profile_complete !== false && !viewUnitKey ? (
               <section className="section">
                 <h2 className="section__title">本次管理记录</h2>
-                <p className="section__description">按时间倒序展示，供医生回看每一步的自然语言结论。</p>
+                <p className="section__description">按时间倒序展示。展开可查看当时的检查、用药、测量与医生决定。</p>
                 {events.loading ? <LoadingBlock message="正在读取管理记录…" /> : null}
                 {events.data && events.data.items.length > 0 ? (
                   <ul className="event-list">
@@ -349,12 +300,13 @@ export default function PatientWorkspacePage({ patientId, currentUser, onBack }:
                         <span className="event-item__meta">
                           {event.created_at.replace('T', ' ').slice(0, 16)}
                           {event.source === 'system' ? ' · 系统自动' : ''}
-                          {event.source === 'debug' ? ' · 测试跳转' : ''}
+                          {event.source === 'debug' ? ' · 历史维护' : ''}
                           {event.simulated_date
-                            ? ` · 模拟日期 ${event.simulated_date.replaceAll('-', '/')}`
+                            ? ` · 业务日期 ${event.simulated_date.replaceAll('-', '/')}`
                             : ''}
                         </span>
-                        <span className="event-item__text">{event.output_text}</span>
+                        <span className="event-item__text">{eventText(event.output_text, event.source)}</span>
+                        <HistoryDetail patientId={loaded.id} eventId={event.id} />
                       </li>
                     ))}
                   </ul>

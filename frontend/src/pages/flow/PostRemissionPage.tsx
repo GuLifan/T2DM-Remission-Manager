@@ -14,7 +14,7 @@ import { useState } from 'react'
 
 import { ApiError } from '../../api/client'
 import { flowApi } from '../../api/endpoints'
-import { CheckboxGroup, DateInput, ErrorBanner, FieldRow, ResultBanner, SettingsRow } from '../../components'
+import { AssessmentMeasurementFields, CheckboxGroup, DateInput, ErrorBanner, FieldRow, ResultBanner, SettingsRow } from '../../components'
 import {
   GLUCOSE_BELOW,
   GLUCOSE_DIABETIC,
@@ -36,6 +36,8 @@ interface FlowPageProps {
 
 /** 单元6：缓解后复评。 */
 export default function PostRemissionPage({ patient, onUpdated }: FlowPageProps) {
+  const [weight, setWeight] = useState('')
+  const [height, setHeight] = useState(patient.height_cm?.toString() ?? '')
   const [glucose, setGlucose] = useState('')
   const [medStatus, setMedStatus] = useState<string>(MED_UNUSED)
   const [glucoseState, setGlucoseState] = useState<string>(GLUCOSE_BELOW)
@@ -57,10 +59,16 @@ export default function PostRemissionPage({ patient, onUpdated }: FlowPageProps)
 
   /** 提交缓解后复评。 */
   async function handleSubmit() {
+    if (!weight || (patient.height_cm == null && !height)) {
+      setError(patient.height_cm == null ? '请填写本次体重和患者身高。' : '请填写本次体重。')
+      return
+    }
     setError('')
     setSubmitting(true)
     try {
       const response = await flowApi.postRemission(patient.id, {
+        f018_weight: Number(weight),
+        f019_height: patient.height_cm == null && height !== '' ? Number(height) : null,
         f049_glucose: glucose || null,
         f050_med_status: medStatus,
         f051_risk_triggers: riskTriggers,
@@ -90,7 +98,14 @@ export default function PostRemissionPage({ patient, onUpdated }: FlowPageProps)
           {error ? <ErrorBanner message={error} /> : null}
 
           <div className="form-grid">
-            <FieldRow label="当前血糖指标及日期">
+            <AssessmentMeasurementFields
+              patient={patient}
+              weight={weight}
+              onWeightChange={setWeight}
+              height={height}
+              onHeightChange={setHeight}
+            />
+            <FieldRow label="血糖指标" hint="请同时记录指标日期。">
               {(fieldProps) => (
                 <input
                   {...fieldProps}
@@ -101,7 +116,7 @@ export default function PostRemissionPage({ patient, onUpdated }: FlowPageProps)
                 />
               )}
             </FieldRow>
-            <FieldRow label="当前是否使用具有降糖作用的药物及原因">
+            <FieldRow label="降糖药物状态" hint="记录是否使用具有降糖作用的药物及原因。">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -116,7 +131,7 @@ export default function PostRemissionPage({ patient, onUpdated }: FlowPageProps)
                 </select>
               )}
             </FieldRow>
-            <FieldRow label="当前血糖状态（医生确认）">
+            <FieldRow label="血糖状态" hint="由医生确认。">
               {(fieldProps) => (
                 <select
                   {...fieldProps}
@@ -142,7 +157,7 @@ export default function PostRemissionPage({ patient, onUpdated }: FlowPageProps)
           </div>
 
           <SettingsRow
-            label="辅助触发信息（可多选）"
+            label="风险触发"
             description="存在风险触发信息时提示加强维持干预，可由医生决定是否提前复评。"
             stacked
             control={
@@ -157,7 +172,7 @@ export default function PostRemissionPage({ patient, onUpdated }: FlowPageProps)
 
           {needStage ? (
             <div className="form-grid">
-              <FieldRow label="返回主动管理后的管理阶段" hint="由医生选择，系统不代为决定。">
+              <FieldRow label="返回管理阶段" hint="由医生选择，系统不代为决定。">
                 {(fieldProps) => (
                   <select
                     {...fieldProps}
@@ -174,7 +189,7 @@ export default function PostRemissionPage({ patient, onUpdated }: FlowPageProps)
                 )}
               </FieldRow>
               <FieldRow
-                label="是否出现新分型证据或重大临床变化"
+                label="新分型/重大变化"
                 hint="仅此类情况才返回完整评估复核，否则返回阶段复评。"
               >
                 {(fieldProps) => (

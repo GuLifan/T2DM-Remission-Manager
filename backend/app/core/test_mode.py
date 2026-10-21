@@ -26,29 +26,38 @@ from app.models.user import User
 
 def test_capability_enabled(user: User) -> bool:
     """判断当前账号是否同时满足测试模式与测试账号双条件。"""
-    return get_settings().test_mode and user.is_test_account
+    return (get_settings().test_mode or get_settings().demo_mode) and user.is_test_account
+
+
+def date_management_enabled(user: User) -> bool:
+    """日期权限独立于隔离标记：仅管理员可维护自己的业务日期。
+
+    旧普通账号可能仍保存simulated_date；集中在读取处忽略，避免改写历史，
+    也避免只隐藏按钮后旧值继续影响观察、判定和事件日期。
+    """
+    return user.role == "admin" and test_capability_enabled(user)
 
 
 def require_test_account(user: User) -> None:
     """要求测试模式已开启且当前账号为测试账号。"""
-    if not get_settings().test_mode:
-        raise ForbiddenError("测试模式未开启，当前操作已被阻止。", code="TEST_MODE_DISABLED")
+    if not (get_settings().test_mode or get_settings().demo_mode):
+        raise ForbiddenError("当前环境未开放此维护功能。", code="TEST_MODE_DISABLED")
     if not user.is_test_account:
-        raise ForbiddenError("当前账号不是测试账号，无法使用测试功能。", code="TEST_ACCOUNT_REQUIRED")
+        raise ForbiddenError("当前账号未获此维护功能授权。", code="TEST_ACCOUNT_REQUIRED")
 
 
 def require_test_patient(patient: Patient) -> None:
     """要求目标患者已被明确标记为测试患者。"""
     if not patient.is_test_patient:
         raise ForbiddenError(
-            "该患者不是测试患者，禁止使用测试跳转或模拟日期。",
+            "该记录不在当前环境允许的管理范围内。",
             code="TEST_PATIENT_REQUIRED",
         )
 
 
 def effective_today(user: User) -> date:
     """返回该账号的有效日期；测试能力未开启时始终使用真实日期。"""
-    if test_capability_enabled(user) and user.simulated_date is not None:
+    if date_management_enabled(user) and user.simulated_date is not None:
         return user.simulated_date
     return system_clock.today()
 
@@ -56,14 +65,14 @@ def effective_today(user: User) -> date:
 def effective_today_for_patient(user: User, patient: Patient) -> date:
     """返回患者流程使用的有效日期，并阻断模拟日期作用于真实患者。"""
     today = effective_today(user)
-    if test_capability_enabled(user) and user.simulated_date is not None:
+    if date_management_enabled(user) and user.simulated_date is not None:
         require_test_patient(patient)
     return today
 
 
 def simulated_date_for_event(user: User, patient: Patient) -> date | None:
     """返回事件应记录的模拟日期；同时执行真实患者硬阻断。"""
-    if not (test_capability_enabled(user) and user.simulated_date is not None):
+    if not (date_management_enabled(user) and user.simulated_date is not None):
         return None
     require_test_patient(patient)
     return user.simulated_date
