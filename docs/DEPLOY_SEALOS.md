@@ -1,113 +1,106 @@
-# Sealos deployment / Sealos 部署 — 0.4.3
+# Sealos 0.4.3 complete replacement / 完整替换
 
-Public testing in a Linux container environment similar to Docker; simulated information only. Use one instance, one Uvicorn worker and SQLite. No Docker image is provided.
+Use this guide for an **existing, stopped installation**. Existing accounts, cases, history, `.env`, signing key, Python virtual environment and evidence are retained. The archive is a complete current application, not a set of changed files. No database migration or account initialization is required.
 
-这是在类似 Docker 的 Linux 容器中运行的公网测试版本，仅使用模拟资料。采用单实例、单 Uvicorn worker 和 SQLite，不提供 Docker 镜像。
+适用于**已有且已停服的工程**。保留账号、病例、历史、`.env`、签名密钥、Python虚拟环境和依据。本包为完整当前应用，不是差异文件集合；无需数据库迁移或账号初始化。
 
-## Existing 0.4.2 installation / 已有0.4.2环境
+## 1. Upload / 上传
 
-Use the [0.4.3 patch guide](UPDATE_0.4.3.md) for the officially supplied 0.4.2 Sealos package. It includes prebuilt pages, checks the base files, backs up private data and preserves `.env`, keys and evidence. Do not run administrator initialization again.
+Use Xftp to upload the ZIP and `SHA256SUMS.txt` to `/home/devbox/project/`, beside the old application. Do not drag new files over the old code tree: ordinary overwriting leaves obsolete files. Do not overwrite an existing extracted release directory.
 
-此前通过官方0.4.2 Sealos部署包安装的环境，请使用[0.4.3补丁指南](UPDATE_0.4.3.md)。补丁带编译页面，检查基线并备份私有资料，保留`.env`、密钥和依据原件；不要重复初始化管理员。
-
-## Fresh Node.js 22 Devbox / 全新Node.js 22 Devbox
-
-1. Create a Node.js 22 Devbox; verify Node is at least 22.12. Install uv in the Devbox user's tool directory and Python 3.13. Project dependencies stay in `backend/.venv`.
-
-1. 创建Node.js 22 Devbox，确认Node至少22.12。将uv安装在Devbox用户工具目录，并安装Python3.13；项目依赖只安装在`backend/.venv`。
-
-```bash
-node --version
-curl -LsSf https://astral.sh/uv/install.sh -o /tmp/etmms-uv-install.sh
-sh /tmp/etmms-uv-install.sh
-export PATH="$HOME/.local/bin:$PATH"
-uv python install 3.13
-uv python find 3.13
-```
-
-2. Obtain the development release from `develop` (the owner has not promoted 0.4.3 to main). Record the commit SHA. Downloading a source ZIP is also possible; dependencies and build output are not included.
-
-2. 从`develop`获取此次开发版本（0.4.3未获授权发布到main），记录提交SHA。也可使用源码ZIP，但不含依赖和构建产物。
+用Xftp把ZIP和`SHA256SUMS.txt`上传到`/home/devbox/project/`，放在旧工程旁。不要把新文件直接拖进旧代码目录覆盖，这样会残留旧文件。不要覆盖已存在的解压目录。
 
 ```bash
 cd /home/devbox/project
-git clone --branch develop --single-branch https://github.com/GuLifan/T2DM-Remission-Manager.git
-cd T2DM-Remission-Manager
-git rev-parse HEAD
+sha256sum -c SHA256SUMS.txt
+unzip ETMMS-v0.4.3-sealos-full-20261022.zip
 ```
 
-3. Choose an actual persistent directory outside the source tree. The path below is an example: verify its Sealos mount, rather than assuming it survives recreation. Copy the example configuration and edit the real `.env` privately.
+The extracted directory is `ETMMS-v0.4.3`. If that name is already the live project or is occupied, extract locally, rename the new directory to `ETMMS-v0.4.3-release`, then upload it beside the existing project and use that name below. Do not replace the live directory during extraction.
 
-3. 在源码之外选择真实持久化目录。下方路径只是示例，须核实Sealos挂载，不能假定重建后仍在。复制配置样例后，私下编辑真实`.env`。
+解压得到`ETMMS-v0.4.3`。若该名称已经是当前工程或被占用，先在本地解压，把新目录改名为`ETMMS-v0.4.3-release`后整体上传到原工程旁，并相应调整下面的release路径；解压阶段不覆盖当前工程。
+
+## 2. Confirm paths and stop / 核对路径并停服
+
+The existing path below is an example; use `pwd` in the old project to confirm yours. Keep the final live path unchanged, including the virtual environment's absolute path. Work from the parent directory while switching application folders.
+
+下列旧工程路径需与你实际一致；可在原工程用`pwd`核对。最终运行路径保持不变，虚拟环境的绝对路径也保持。替换时终端停留在父目录。
 
 ```bash
-mkdir -p /home/devbox/etmms-v04-data
-chmod 700 /home/devbox/etmms-v04-data
-cp backend/.env.example backend/.env
-chmod 600 backend/.env
+cd /home/devbox/project
+export ETMMS_PROJECT=/home/devbox/project/ETMMS-v0.4
+export ETMMS_RELEASE=/home/devbox/project/ETMMS-v0.4.3
+bash "$ETMMS_PROJECT/start.sh" stop
 ```
 
-Configuration / 配置：
+If you already stopped the service, the last command confirms its state. Only the old live path and new sibling release path are supplied; no SSH key or application password is needed.
 
-```dotenv
-ETMMS_DEMO_MODE=true
-ETMMS_DATA_DIR=/home/devbox/etmms-v04-data
-ETMMS_SESSION_HOURS=8
-ETMMS_LOG_LEVEL=INFO
-```
+已经停服也可执行最后一行确认状态。这里只填写旧运行目录和新的同级完整包目录，不需要SSH私钥或应用密码。
 
-Keep the randomly created signing key with the database and backups. Never copy a developer's database, key, `.venv` or `node_modules` into a fresh installation.
-
-随机生成的签名密钥须与数据库和备份一起保存。新装时不要导入开发者数据库、密钥、Windows虚拟环境或依赖目录。
-
-4. Install from lockfiles, build the frontend, then create the **first** administrator interactively. Choose your own unique password of at least 12 characters. The patient list starts empty.
-
-4. 按锁文件安装并编译前端，再交互创建**首个**管理员。使用自己设置的至少12位独立密码；患者列表初始为空。
+## 3. Check without modifying / 只读预检
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
-export UV_PYTHON=3.13
-bash scripts/setup.sh
-cd backend
-uv run --no-sync python -m app.demo_cli init-admin
-cd ..
+"$ETMMS_PROJECT/backend/.venv/bin/python" \
+  "$ETMMS_RELEASE/scripts/replace_deployment.py" check \
+  --project "$ETMMS_PROJECT" --release "$ETMMS_RELEASE"
 ```
 
-5. For complete evidence search, privately configure the four approved originals following [EVIDENCE.md](EVIDENCE.md). Core workflow can start without them; do not claim an empty evidence index is complete.
+Expected: `Preflight passed / 预检通过`. The tool checks the complete release manifest/hashes, separate paths, stopped port8088, existing configuration/database/key, database headd04data001 and unchanged Python runtime dependencies. Missing data is an error, never permission to create a blank database. Resolve reported issues before continuing. Use `--port` on every operation only if your existing service intentionally uses another port.
 
-5. 若需完整依据检索，按[EVIDENCE.md](EVIDENCE.md)私下配置四份已批准原件。核心流程可先启动，但空依据索引不等于已完整配置。
+预期“预检通过”。工具核对完整清单/哈希、目录互不包含、8088停服、原配置/数据库/密钥、结构d04data001及Python运行依赖一致。缺原数据会报错，不会创建空库。若报错，先核实再继续。仅现有服务确实使用其他端口时，各次操作都增加对应`--port`。
+
+## 4. Full replacement / 完整替换
 
 ```bash
-# Only after private resources are configured / 仅在原件配置完成后
-cd backend
-uv run --no-sync python -m app.evidence_cli
-cd ..
+"$ETMMS_PROJECT/backend/.venv/bin/python" \
+  "$ETMMS_RELEASE/scripts/replace_deployment.py" replace \
+  --project "$ETMMS_PROJECT" --release "$ETMMS_RELEASE"
 ```
 
-6. Start and expose **8088** via Sealos public HTTPS. Do not expose a Vite dev server or static aliases to data/resources. `start.sh` runs in the background; `entrypoint.sh` is the alternative foreground entrypoint. Do not run both at once.
+The tool prepares a clean sibling tree, carries over `.env`, `.venv`, project-internal runtime data and evidence originals, and leaves external data where configured. It creates a private `.etmms-backups/<time-id>/` beside the application, containing the original application and an integrity-checked SQLite/configuration/key backup. It then switches directories at the original live path. A failed final switch restores the original application. It never recursively deletes the old project, runtime data or backups.
 
-6. 启动，并在Sealos网络设置将容器**8088**端口开放为HTTPS公网访问。不要公开Vite开发服务器或数据/原件静态目录。`start.sh`后台运行；`entrypoint.sh`是另一种前台入口，两者不要同时运行。
+工具准备干净同级目录，带入原`.env`、`.venv`、项目内运行数据及依据原件；外部数据仍留在原配置位置。在工程旁生成私有`.etmms-backups/<时间标识>/`，含旧工程和已核验的一致性SQLite/配置/密钥备份，再切换到原运行路径。最终切换失败会恢复旧工程，不递归删除工程、数据或备份。
+
+**Wait for “Full replacement complete / 完整替换完成”.** Keep the printed private backup path; do not upload/share backups. A failed preparation may leave a hidden staging directory for inspection. Do not manually start it or copy it over the application.
+
+**看到“完整替换完成”后再启动。** 记下输出的私有备份路径，不上传或分享。准备失败可能保留隐藏暂存目录供核查，不手工运行它或覆盖当前工程。
+
+## 5. Start and inspect / 启动核验
 
 ```bash
+cd "$ETMMS_PROJECT"
 bash start.sh
 bash start.sh status
 curl --fail http://127.0.0.1:8088/api/health
 ```
 
-Expected / 预期：`{"status":"ok","version":"0.4.3"}`.
+Expected: `{"status":"ok","version":"0.4.3"}`. Keep the same Sealos public port8088 and HTTPS route. Force-refresh the browser (Ctrl+F5), use the original accounts and confirm existing cases/history and evidence, administrator date entry upper-left, doctor read-only date, current-plan medication removal and centered validation results.
 
-The background script defaults to 8088 (`ETMMS_START_PORT` override); the foreground script uses `${PORT:-8088}`. After a Devbox restart run `bash start.sh` again; no boot task is installed. Test terminal-close behavior, persistence and backups in the actual environment.
+预期`{"status":"ok","version":"0.4.3"}`。Sealos公网8088端口和HTTPS路由保持。浏览器Ctrl+F5刷新，以原账号登录，核对旧病例/历史/依据、管理员左上日期入口、医生只读日期、本次药物移除及居中提示。
 
-后台脚本默认8088，可用`ETMMS_START_PORT`覆盖；前台脚本使用`${PORT:-8088}`。Devbox重启后再执行一次`bash start.sh`，没有配置开机自动任务。请现场验证关闭终端、重启持久化和备份。
+No `init-admin`, evidence reimport, `npm ci`, frontend build or `uv sync` is required for this replacement: compatible installed Python dependencies and the compiled frontend are retained/provided. If you intentionally rebuild the source later, use the included lockfiles. Do not copy a Windows virtual environment to Linux.
 
-7. Log in, issue an invitation under **账号管理**, and register a doctor in another browser profile. Confirm empty starting lists, ownership isolation and doctor read-only dates. Administrator date controls are visible at the upper-left of the list/case workspace and remain available in account management.
+本次替换不需要`init-admin`、重新导入依据、`npm ci`、前端构建或`uv sync`：沿用相容的已安装Python依赖，页面已编译。以后主动重建源码时使用包内锁文件；不把Windows虚拟环境复制到Linux。
 
-7. 登录管理员，到**账号管理**发放邀请码，在另一浏览器配置中注册医生。确认初始列表为空、病例隔离、医生日期只读。管理员在列表/病例工作台左上方可直接调整日期，账号管理中也保留入口。
+## 6. Rollback if necessary / 必要时回退
 
-## Upgrading a Git checkout / Git源码部署升级
+Stop the service and substitute the exact backup path printed during replacement. Run from the parent directory; the extracted new release remains available as the maintenance tool.
 
-Stop the old service and make an integrity-checked SQLite backup plus private copies of `.env` and the signing key. Preserve the old checkout. Put the requested new commit in a separate directory, retain the existing external data directory/key, run setup and start the new source. Do not blindly pull/reset a checkout that has received a file patch or manual modifications. Never reinitialize the administrator or delete migration records.
+先停服，使用替换时输出的准确备份路径。在父目录执行；解压的新完整包仍可作为维护工具。
 
-先停旧服务，完成SQLite一致性备份，并私下备份`.env`和签名密钥，保留旧工程。把指定新提交放在另一目录，沿用外部数据目录和密钥，准备依赖后启动。收到文件补丁或有手工修改的Git工作树，不要直接pull/reset覆盖。不要重新初始化管理员或删除迁移记录。
+```bash
+cd /home/devbox/project
+bash "$ETMMS_PROJECT/start.sh" stop
+"$ETMMS_PROJECT/backend/.venv/bin/python" \
+  "$ETMMS_RELEASE/scripts/replace_deployment.py" rollback \
+  --project "$ETMMS_PROJECT" \
+  --backup /home/devbox/project/.etmms-backups/REPLACE_WITH_PRINTED_DIRECTORY
+```
 
-Reference / 参考：[uv installation](https://docs.astral.sh/uv/getting-started/installation/), [Python management](https://docs.astral.sh/uv/guides/install-python/), [Sealos Devbox](https://sealos.io/docs/guides/devbox/).
+After “rollback complete”, return to the live project and start it. Rollback restores prior code but carries over the **current** configuration, environment, data/key and evidence, including records created after replacement. It does not automatically restore an older database. Modified current code or a modified backup is rejected. Another private application backup is kept; do not delete it until acceptance and a separate backup-retention decision.
+
+看到“回退完成”后回运行工程启动。回退恢复旧代码，带入**当前**配置、环境、数据/密钥和依据，包括替换后新增记录，不自动恢复旧数据库。当前代码或旧代码备份被修改时拒绝覆盖，并保留另一份私有工程备份。验收及明确备份保留策略前不删除备份。
+
+Local isolated verification does not replace Sealos/Linux on-site startup, gateway, Devbox restart persistence or clinician acceptance. This procedure does not install automatic boot tasks or alter remote Git branches.
+
+本地隔离验证不代替Sealos/Linux现场启动、网关、Devbox重启持久化或医生验收。本流程不安装开机任务，不改变远端Git分支。

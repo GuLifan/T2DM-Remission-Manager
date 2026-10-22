@@ -1,79 +1,84 @@
 # T2DM Remission Manager / 早期2型糖尿病缓解管理软件
 
-**ETMMS 0.4.3 — public testing on Sealos Cloud in a Linux container environment similar to Docker.**
+**ETMMS 0.4.3 — a public evaluation release deployed on Sealos Cloud in a Linux container environment similar to Docker.**
 
-**ETMMS 0.4.3：部署于 Sealos Cloud、运行在类似 Docker 的 Linux 容器环境中的公网测试版本。**
+**ETMMS 0.4.3：部署于Sealos Cloud、运行在类似Docker的Linux容器环境中的公网验收版本。**
 
-ETMMS supports a clinician-led E1–E5 workflow: pre-assessment, full assessment, phase review, observation/remission assessment, and post-remission follow-up. This is a redeveloped evaluation build for simulated information only, not a medically validated production system. No accounts, patient records or default passwords are shipped.
+The clinician-led workflow covers pre-assessment, full assessment, phase review, observation/remission assessment and follow-up. Use simulated information only. This release does not establish medical validation or production readiness. No accounts, patients, private configuration, keys or medical originals are distributed through Git.
 
-ETMMS 支持医生主导的 E1—E5 流程：预评估、完整评估、阶段复评、观察及缓解判定、缓解后随访。本仓库为重新开发后的评估版本，仅使用模拟资料，不代表已完成医学验证的正式医疗系统。仓库不带账号、患者记录或默认密码。
+支持医生主导的预评估、完整评估、阶段复评、观察及缓解判定和后续随访。仅使用模拟资料，不代表已完成医学验证或正式生产就绪。Git不分发账号、病例、真实配置、密钥或医学原件。
 
-## Changes / 本次修订
+## Source and complete deployment / 源码与完整部署
 
-- Remove saved medication cards from the current plan with explicit review; preserve earlier plans. Removing cards does not establish actual discontinuation or start observation.
-- Restore the administrator's date shortcut at the upper-left of the list and case workspace. Doctors remain read-only.
-- Explain the selected examination date, current business date and E4 eligibility interval separately; past examinations remain recordable.
-- Center validation and incomplete-assessment notices; preserve actionable results across form refresh and locate fields without discarding drafts.
+This repository includes current application source, regression tests, migration history and lockfiles. Compiled pages and complete ZIPs are build outputs, excluded from Git. A GitHub source archive must be built before deployment; an operator-prepared complete distribution already contains compiled pages.
 
-- 允许从本次方案移除已保存药物卡，重新明确核对后保存新方案；历史保留。删除卡片不会认定已经停药或启动观察。
-- 管理员在列表及病例工作台左上方直接调整日期，普通医生仍只读。
-- 分别说明检测日、当前业务日和 E4 可采用日期范围；既往检查仍可保存。
-- 校验及未通过结果居中提示，表单刷新后仍可查看处理原因，并支持定位字段、保留草稿。
+仓库包含当前应用源码、回归测试、迁移链和锁文件。编译页面及完整ZIP是构建产物，不提交Git。GitHub源码压缩包须先构建；维护者制作的完整部署包已包含页面。
 
-## Deployment / 部署
+Supported topology: **one Linux instance, one Uvicorn worker, SQLite, port 8088, HTTPS at Sealos ingress**. Python 3.13 uses uv and `backend/.venv`; source rebuilding uses Node.js 22.12+ and Vite 8.3.3. No Docker image or Docker Compose verification is claimed.
 
-Use Node.js 22.12+, Python 3.13, uv with a project-local virtual environment, FastAPI and a built React frontend. Supported topology: **one Linux instance, one Uvicorn worker, SQLite, port 8088**. Sealos provides HTTPS ingress. This repository does not supply a Docker image or claim Docker Compose validation.
+支持 **Linux单实例、单Uvicorn worker、SQLite、8088端口、Sealos HTTPS入口**。Python 3.13通过uv使用`backend/.venv`；源码重建使用Node.js 22.12+及Vite 8.3.3。不提供Docker镜像，也不宣称完成Docker Compose验证。
 
-使用 Node.js 22.12+、Python 3.13、uv 项目内虚拟环境、FastAPI 及编译后的 React 页面。支持部署方式为 **Linux 单实例、单 Uvicorn worker、SQLite、8088 端口**，由 Sealos 提供 HTTPS 入口。本仓库不提供 Docker 镜像，也不宣称完成 Docker Compose 验证。
+- [Fresh installation from source / 从源码全新安装](docs/FRESH_INSTALL.md)
+- [Complete replacement retaining existing data / 保留数据的完整替换](docs/DEPLOY_SEALOS.md)
+- [Clinical operations / 业务操作](docs/USER_GUIDE.md)
+- [Evidence configuration / 医学依据配置](docs/EVIDENCE.md)
+- [Current specification / 当前约束](_SPEC/CURRENT_SPEC.md)
+- [Validation / 验证范围](docs/VALIDATION.md)
 
-- [Bilingual installation and upgrade guide / 双语安装及升级指南](docs/DEPLOY_SEALOS.md)
-- [0.4.2 → 0.4.3 patch instructions / 更新补丁操作说明](docs/UPDATE_0.4.3.md)
-- [Private evidence inputs / 私有依据配置](docs/EVIDENCE.md)
-- [Chinese clinical UI guide / 中文业务操作说明](docs/使用说明_v0.4.3.md)
+Build a complete ZIP after installing dependencies and compiling the frontend:
 
-After initial setup / 完成首次安装后：
+完成依赖准备及前端编译后，在工程根生成完整ZIP：
+
+```bash
+cd frontend
+npm ci
+npm run build
+cd ..
+backend/.venv/bin/python scripts/build_release.py --output artifacts/release
+```
+
+The builder includes current source, compiled assets, migration files, lockfiles, release manifest and operating documentation. It excludes tests, dependencies, private originals and runtime data. Full replacement validates the manifest, prepares a clean tree, carries over current configuration/environment/data/evidence, backs up privately and switches at the existing application path. Rollback retains later records. Ordinary file overwriting is insufficient to remove obsolete files.
+
+打包工具包含当前源码、编译资产、迁移、锁文件、发布清单及操作说明，排除测试、依赖、私有原件和运行资料。完整替换核验清单、准备新树、保留当前配置/环境/数据/依据，生成私有备份后切换至原路径；回退保留后续记录。普通同名覆盖不能清理旧文件。
 
 ```bash
 bash start.sh
 bash start.sh status
 curl --fail http://127.0.0.1:8088/api/health
-# Stop before maintenance / 维护前停服
 bash start.sh stop
 ```
 
-`start.sh` provides background operation in Devbox; run it again after a restart. Use `entrypoint.sh` for a managed foreground container process. Persistent storage must be verified in the actual platform. Existing upgrades retain the database, `.env` and signing key; never initialize the administrator again.
+Existing installations must not initialize the administrator again. Devbox background startup is manual after restart; verify storage persistence on the actual platform.
 
-`start.sh` 用于 Devbox 后台运行；重启后手工再执行。受平台管理的容器前台进程使用 `entrypoint.sh`。请现场核验数据目录的持久化。既有环境升级须保留数据库、`.env` 和签名密钥，不重复初始化管理员。
+现有环境不再次初始化管理员。Devbox重启后手工后台启动；存储持久化须在实际平台核验。
 
-## Accounts and dates / 账号与日期
+## Current behavior / 当前行为
 
-Create the first administrator interactively, then issue invitations under **账号管理**. Doctors register into an empty personal case list. Ownership is checked by the backend. Administrator date changes affect that administrator only. Shared browser tabs share login; use separate browser profiles for separate users. Corrections append history; archive/new preserves previous rounds.
+Doctors register by administrator invitation and start with empty case lists. Administrators can adjust their own business date from the upper-left entry; doctors use the system date. Current-plan medication removal preserves history and requires renewed review; emptying a plan does not establish actual discontinuation. Past examinations remain recordable, E4 explains date eligibility, and centered validation notices preserve drafts and actionable results.
 
-首次管理员通过终端交互创建，再到 **账号管理** 发放邀请码。医生注册后个人病例列表为空，病例归属由后端校验。管理员改日期只影响自己；同浏览器标签共享登录，独立用户应使用不同浏览器配置。资料补正追加历史；归档并新建保留旧轮次。
+医生凭邀请码注册，病例从零创建。管理员可在左上入口调整自己的业务日期，医生使用系统日。移除本次方案药物保留历史并须重新核对，清空不等于实际停药。既往检查可记录，E4明确日期资格，居中提示保留草稿及待处理结果。
 
-## Evidence and verification / 依据与验证
+Application 0.4.3, clinical contract v0.3, input schema v0.4 and database head d04data001 are separate compatibility layers. Their identifiers, migration chain and valid regression cases remain current dependencies.
 
-Medical PDFs and private stakeholder originals are not redistributed through Git. Supply the four hash-matched resources privately for complete evidence search and authenticated original downloads. Core workflow can start without them. Never expose the resource or runtime data directories as anonymous static content.
+产品0.4.3、临床契约v0.3、输入v0.4和数据库head d04data001属于不同兼容层；其标识、迁移链及有效回归用例继续保留。
 
-医学 PDF 和甲方私有原件不通过 Git 分发。完整检索及鉴权原件下载需要私下配置四份哈希匹配材料；核心流程可先启动。不得将原件目录或运行数据目录设为免登录静态资源。
+## Verification and publication / 验证与发布
 
 ```bash
-cd backend
-uv sync --frozen
-uv run --no-sync pytest
-cd ../frontend
+cd frontend
 npm ci
 npm test
 npm run lint
 npm run build
+cd ../backend
+uv sync --frozen
+uv run --no-sync pytest
 ```
 
-Tests use isolated synthetic data, not deployment patients. See [validation](docs/VALIDATION.md) and [specifications](_SPEC/README.md). Clinical contract v0.3, input v0.4 and database head d04data001 remain unchanged. Local tests do not establish cloud persistence, medical acceptance or production readiness.
+Build the frontend before running backend service tests. Tests use temporary synthetic information. Local engineering results do not establish capacity, cloud restart persistence, regulatory compliance or clinician acceptance. See [security boundaries](SECURITY.md).
 
-测试使用隔离模拟资料，不向部署环境导入病例。详见 [验证记录](docs/VALIDATION.md) 和 [SPEC](_SPEC/README.md)。临床契约 v0.3、输入 v0.4、数据库 head d04data001 保持。本地验证不等于云端持久化、医学验收或正式生产就绪。
+后端服务测试前先完成前端构建。测试使用临时模拟资料。本地工程结果不代表容量极限、云端重启持久化、监管合规或临床验收。详见[安全边界](SECURITY.md)。
 
-## Branch policy / 分支规则
+Development publishes to **develop**. Every **main** update requires Lifan's explicit instruction. Preserve Git history; never publish local handover notes, credentials, databases or private originals. Git explanations are primarily English; introductions and deployment guides are bilingual.
 
-Development targets **develop**. Every **main** update requires Lifan's explicit instruction. Git explanatory text is primarily English; introduction/deployment documents are bilingual. Historical commits remain by the owner's request; current-tree cleanup is not a history purge. No redistribution license for third-party originals is implied. See [contribution rules](CONTRIBUTING.md) and [security](SECURITY.md).
-
-开发版本走 **develop**；每次更新 **main** 均需 Lifan 明确指示。Git 说明以英语为主，介绍及部署文件中英双语。旧提交按要求保留，当前树清理不等于抹除历史；不据此授予第三方原件的再分发许可。详见 [协作规则](CONTRIBUTING.md) 和 [安全边界](SECURITY.md)。
+开发发布到 **develop**；每次更新 **main** 均须Lifan明确指示。保留Git历史，不发布本地交接、凭据、数据库或私有原件。Git说明英语为主，介绍及部署文件中英双语。

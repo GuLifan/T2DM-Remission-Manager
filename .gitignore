@@ -46,3 +46,10 @@ tmp/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Private workspace handover, retained deliveries and replacement backups
+/HANDOVER.md
+/_LOCAL_HANDOVER/
+/_LOCAL_RELEASE/
+.etmms-backups/
+.etmms-stage-*/

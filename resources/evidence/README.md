@@ -1,8 +1,5 @@
-# Evidence files are private deployment inputs
+# Private evidence / 私有依据
 
-Only this README and `manifest.json` belong in Git. Supply the four exact approved originals privately, following [the evidence guide](../../docs/EVIDENCE.md). Do not expose this directory as public static content. Clinical workflow can start without them; complete evidence search cannot.
+Only the path/hash manifest is distributed. During replacement, existing private originals are retained; the existing runtime database retains their search index. Follow [evidence configuration](../../docs/EVIDENCE.md) for a deliberately new setup. Never serve this directory anonymously.
 
-
-## 中文
-
-Git只保留本说明和manifest.json。四份准确原件通过私有渠道配置，参见[依据指南](../../docs/EVIDENCE.md)。不得将此目录设为免登录静态目录。没有原件时核心流程可运行，完整依据检索不可用；0.4.3补丁保留原有资源。
+仅分发路径/哈希清单。完整替换保留现有私有原件及运行数据库中的检索索引；主动新建依据库时遵循[配置说明](../../docs/EVIDENCE.md)。本目录不得免登录静态开放。

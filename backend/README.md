@@ -1,7 +1,9 @@
-# ETMMS backend / 后端 0.4.3
+# ETMMS 0.4.3 backend / 后端
 
-FastAPI + SQLAlchemy + SQLite, Python 3.13. Use uv and the project-local `.venv`, install from `uv.lock`, and run one Uvicorn worker. Configure `.env` before starting. Existing upgrades preserve data/key and do not run `init-admin` again.
+FastAPI, SQLAlchemy, Alembic and SQLite on Python3.13 with uv and project-local backend/.venv. Application source, migrations and isolated regression tests are included. Current clinical contractv0.3, inputv0.4 and database headd04data001 remain unchanged.
 
-使用 FastAPI、SQLAlchemy、SQLite 和 Python 3.13。通过 uv 与项目内 `.venv` 按 `uv.lock` 安装，运行单 Uvicorn worker。启动前配置 `.env`；已有环境升级保留数据和密钥，不重复执行 `init-admin`。
+使用Python3.13、FastAPI、SQLAlchemy、Alembic和SQLite，uv管理项目内backend/.venv。包含应用源码、迁移及隔离回归；临床v0.3、输入v0.4和数据库d04data001保持。
 
-[Sealos setup / 安装](../docs/DEPLOY_SEALOS.md) · [Patch / 补丁](../docs/UPDATE_0.4.3.md) · [Specifications / 约束](../_SPEC/README.md) · [Evidence / 依据](../docs/EVIDENCE.md)
+Run `uv sync --frozen` and `uv run --no-sync pytest` here. Existing cloud replacement retains its own configuration/environment/data and never initializes the administrator again. See [fresh install](../docs/FRESH_INSTALL.md), [complete replacement](../docs/DEPLOY_SEALOS.md) and [current constraints](../_SPEC/CURRENT_SPEC.md).
+
+在此运行上述命令准备开发环境和回归。既有云端完整替换保留配置/环境/数据，不重新初始化管理员。详见[全新安装](../docs/FRESH_INSTALL.md)、[完整替换](../docs/DEPLOY_SEALOS.md)及[约束](../_SPEC/CURRENT_SPEC.md)。

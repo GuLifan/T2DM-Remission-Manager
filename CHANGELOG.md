@@ -1,3 +1,11 @@
+# 0.4.3 complete distribution and workspace handover
+
+Publish complete-tree replacement with private backup, runtime preservation and rollback; provide reproducible ZIP building and bilingual fresh-install/replacement guides. Retire incremental maintenance and its dedicated tests; preserve all clinical/security/component regressions and Git history. Local handover and approved delivery records remain ignored. Correct the unavailable frontend test-dependency tarball to the matching 10.4.2 release; application code and runtime dependencies are unchanged.
+
+发布完整目录替换及备份/数据保留/回退工具、可复现打包和双语安装/替换说明。退役增量维护及专用测试，保留全部有效临床/权限/组件回归和Git历史。本地交接与已交付记录Git忽略。修正不可下载的前端测试依赖压缩包为匹配的10.4.2版本，不改变应用源码或运行依赖。
+
+## Prior change records
+
 # Changelog
 
 ## 0.4.3 — 2026-10-21

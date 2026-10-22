@@ -1,39 +1,51 @@
-# Validation scope — 0.4.3 public source / 验证范围
+# Validation — 0.4.3 / 验证范围
 
-## 0.4.3 repair verification — 2026-10-21 / 修订验证
+## Clean-workspace verification — 2026-10-22 / 全新工作区验证
 
-The complete local suite passed **452 backend tests** (two existing upstream deprecation warnings) and **61 frontend tests across 19 files**. Frontend lint and the production build passed. These counts include the new cases; they are not added to earlier runs. The database schema remains `d04data001`.
+The current source was installed from its lockfiles in a new project-local Python environment and a fresh frontend dependency directory. **466 backend tests passed** (two upstream deprecation warnings); **61 frontend tests across 19 files passed**. Frontend lint, TypeScript/production build and Python lock consistency passed. The complete-replacement helper, builder and replacement tests passed Ruff checks.
 
-本轮完整本地套件通过**452项后端测试**（两条既有上游弃用提示）和**19个文件、61项前端测试**，前端lint和生产构建通过。数字已经包含新增用例，不与历史次数累加。数据库结构仍为`d04data001`。
+当前源码按锁文件在全新的项目Python环境和前端依赖目录安装。**466项后端测试通过**（两条上游弃用提示），**19个文件、61项前端测试通过**；前端检查、TypeScript/生产构建、Python锁一致性通过。完整替换工具、打包工具及替换测试通过Ruff检查。
 
-New coverage includes declared partial/all medication removal, explicit empty-plan confirmation, historical preservation, invalid/foreign IDs, review and source-revision guards, no automatic stop facts, past/today/future examinations, exact E4 interval boundaries, centered notices that survive revision refresh, draft/focus preservation and role-dependent date controls. Fourteen updater cases cover preflight, protected paths, tampered payloads, modified/missing base files, optional new public documents, active-service refusal, replacement failure, repeat application and rollback retaining later database records.
+The backend total is the previous 452 cases minus 14 cases dedicated to the retired incremental updater, plus 28 complete-replacement cases. All other prior clinical, ownership, concurrency, service and component regressions remain. Application files under `backend/app` and `frontend/src` are byte-identical to the reviewed 0.4.3 source baseline `9d669d9`. A frozen JSON fixture was normalized from CRLF to LF by Git without changing its content. These are current totals, not sums of historical runs.
 
-新增覆盖药物部分/全部移除声明、空方案显式确认、历史保留、无效/其他来源ID、重新核对及版本门禁、不自动生成停药事实，过去/当天/未来检查、E4确切区间边界、刷新后保留的居中提示、草稿/焦点保留和按角色显示日期入口。补丁工具14项用例覆盖预检、受保护路径、载荷篡改、基线修改/缺失、新增公开说明的可选基线、监听中拒绝、替换异常、重复应用及回退保留后续数据库记录。
+后端总数为此前452项，减去随增量工具退役的14项专用测试，加上28项完整替换测试。其他既有临床、归属、并发、服务和组件回归保留。`backend/app`与`frontend/src`逐字节保持已审查0.4.3基线`9d669d9`；一份冻结JSON夹具仅由Git规范换行，内容不变。这里是本次总数，不与历史次数累加。
 
-An actual local browser walkthrough used separate disposable administrator/doctor accounts and isolated synthetic cases, not the public database. It verified date set/restore and old-draft blocking, independent doctor/system dates, saved partial/all card removal, unchanged active-management state after emptying a plan, E4 selected-date explanations and post-save notices, and a 375-pixel date dialog. Browser automation observations complement the regression suite; they do not establish that every browser or device has been covered.
+The frontend lockfile referred to a nonexistent `@testing-library/dom` 10.4.3 tarball. It now pins the available 10.4.2 tarball whose integrity matches the existing lockfile entry. A fresh `npm ci` and the checks above passed. This changes a test dependency, not clinical application code or runtime dependencies.
 
-实际本地浏览器走查使用独立管理员/医生账号及隔离模拟病例，未操作公网数据库。核对日期调整/恢复和旧草稿阻断、医生系统日期隔离、已保存卡片部分/全部移除、清空方案后仍处主动管理、E4所选日期说明和保存后提示，以及375像素日期弹窗。浏览器走查补充自动回归，不代表覆盖所有浏览器和设备。
+前端锁文件原来指向不存在的`@testing-library/dom` 10.4.3压缩包，现改为与原integrity一致且可下载的10.4.2。全新`npm ci`及以上检查通过；只修正测试依赖，不修改临床源码或运行依赖。
 
-This is local engineering verification. Sealos installation, public gateway behavior, cloud persistence/restart and clinician acceptance remain target-environment checks. Historical 0.4.2 records below remain frozen context.
+## Coverage and limits / 覆盖及边界
 
-以上是本地工程验证。Sealos安装、公网网关、云端持久化/重启及临床医师验收仍需目标环境核对。以下0.4.2记录作为冻结历史保留。
+Regression coverage includes historical clinical-source contracts, E1–E5 transitions, ownership and session isolation, conflicting saves, role-dependent dates, current-plan removal without inferring discontinuation, examination date boundaries, persistent centered notices, draft preservation and background-service guards. Public source/evidence tests use minimal frozen baselines and synthetic files; they do not require private originals or silently skip their absence. These checks validate engineering consistency rather than independently revalidating every medical claim.
 
-## Historical 0.4.2 scope
+覆盖包括历史临床来源契约、E1—E5转移、归属与会话隔离、竞争保存、按角色使用日期、本次移除药物但不推断停药、检查日期边界、持续居中提示、草稿保留及后台服务门禁。公开来源/依据测试使用最小冻结基线和合成文件，不依赖私有原件，也不因缺失而跳过。这验证工程一致性，不等于逐条重新验证全部医学论断。
 
-The 0.4.2 engineering repair run completed 422 backend tests, 56 frontend tests and a separate local HTTP logic suite with 385 assertions covering 58 transitions. Those historical engineering results are not additive, not a cloud capacity benchmark and not clinician acceptance.
+The 28 replacement cases exercise separate internal/external data layouts, preflight refusal, manifests, protected runtime material, clean-tree replacement, failure recovery and rollback preserving later records. The earlier complete-delivery run additionally exercised three actual archive baselines over nine local API phases; that historical run is separate and is not added to this suite's totals.
 
-Publication includes all backend and frontend unit/regression tests. Two original-source comparisons are adapted to minimal public frozen baselines extracted from the previously checked private documents; see `backend/tests/fixtures/README.md`. Their public run validates program consistency, not a new comparison against the withheld originals. No tests are silently skipped for missing private files.
+28项完整替换用例覆盖内部/外部数据、预检拒绝、清单、运行资料保护、干净目录替换、失败恢复及保留后续记录的回退。此前完整交付另对三种真实压缩包基线做过九个本地API阶段检查；这是独立历史记录，不计入本次测试总数。
 
-Run from `backend`: `uv sync --frozen`, then `uv run --no-sync pytest`. Run from `frontend`: `npm ci`, `npm test`, `npm run lint`, `npm run build`. Data generated by tests is temporary and separate from deployment data.
+Lifan reports that 0.4.3 currently runs normally on Sealos. This migration/publication did not change the running cloud service or database. Windows-local tests do not independently establish Linux process behavior, gateway capacity, Devbox restart persistence, comprehensive device coverage or clinician acceptance.
 
-Public evidence-import tests generate their own small synthetic sources; they do not require the actual PDFs. Full-text evidence in a deployed installation does require the four private resources.
+Lifan已确认0.4.3当前在Sealos正常运行。本轮迁移和Git发布未修改云端服务或数据库。Windows本地验证不能独立证明Linux进程行为、网关容量、Devbox重启持久化、全部设备兼容或临床医师验收。
 
-Linux setup, Sealos gateway behavior, actual volume persistence, Devbox restart, long-lived sessions, cloud concurrency and clinician/medical acceptance must be verified in the target environment. Local results do not establish those properties.
+## Reproduce / 复现
 
-## Public snapshot verification — 2026-10-21
+Build the frontend before the backend suite: background-service tests intentionally require the compiled page. Tests use temporary synthetic information, separate from deployment data.
 
-The curated public checkout was reinstalled from its lockfiles in a new project-local Python environment and a fresh frontend dependency directory. Final results: **422 backend tests passed** (two upstream deprecation warnings), **56 frontend tests passed**, frontend lint and production build passed. No test functions or parameterizations were dropped. The authenticated original-download regression now generates a temporary synthetic PDF and exercises allowlist, login, changed-file and missing-file guards instead of reading a private source PDF.
+先构建前端，再运行后端全套：后台服务测试确实要求编译页面存在。测试使用临时模拟资料，与部署数据分离。
 
-The initial frontend audit reported a Vite development-tool advisory. Public source now pins Vite **8.3.3**; the repeated npm audit reported **0 vulnerabilities** at the time of publication. See [the advisory and patched versions](https://github.com/advisories/GHSA-587h-7wmj-h5pm). This is not a guarantee that no vulnerabilities exist or will be disclosed later. The earlier standalone Sealos ZIP is unchanged.
+```bash
+cd frontend
+npm ci
+npm test
+npm run lint
+npm run build
+cd ../backend
+uv sync --frozen
+uv run --no-sync pytest
+uv run --no-sync ruff check ../scripts/replace_deployment.py ../scripts/build_release.py tests/test_complete_deployment.py
+```
 
-Candidate-tree checks exclude runtime/configuration/credential files and medical originals. Common private-key/API-token pattern scanning covered the candidate files and 503 blobs reachable from the two retained branch histories, with no pattern matches. This limited scan does not establish that every possible secret or personal detail has been removed from retained history.
+The release builder uses an explicit operating-document list and excludes private configuration, keys, runtime databases, dependency directories, test fixtures and evidence originals. Private originals and handover records are Git-ignored. Limited candidate-file key/token/local-path pattern scans are useful checks, not a guarantee of exhaustive secret detection or a fresh audit of all retained Git history.
+
+打包工具明确列出运行说明，排除私有配置、密钥、运行库、依赖目录、测试夹具及依据原件。私有原件和交接记录受Git忽略保护。候选文件的有限密钥/token/本机路径模式扫描属于辅助检查，不保证识别一切秘密，也不代表本轮重新审计全部保留的Git历史。

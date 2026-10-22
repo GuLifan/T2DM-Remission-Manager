@@ -1,9 +1,9 @@
-# ETMMS frontend / 前端 0.4.3
+# ETMMS 0.4.3 frontend / 前端
 
-React + TypeScript + Vite. Use Node.js 22.12+, install with `npm ci`, and verify with `npm test`, `npm run lint`, `npm run build`. Production `dist/` is built during setup and served by the backend; it is not committed. Vite's local development server is not the public entrypoint.
+React, TypeScript and Vite8.3.3; use Node.js22.12+ and the supplied lockfile. Run `npm ci`, `npm test`, `npm run lint` and `npm run build`. Component regressions remain in source control; compiled dist is ignored and included by the complete-release builder.
 
-使用 React、TypeScript、Vite 和 Node.js 22.12+。通过 `npm ci` 安装，使用 `npm test`、`npm run lint`、`npm run build` 验证。生产 `dist/` 在准备时构建，由后端同源托管，不提交 Git。Vite 本地开发服务器不作为公网入口。
+使用React、TypeScript和Vite8.3.3；Node.js22.12+及现有锁文件。运行上述命令准备依赖、测试、lint和构建。组件回归保留在源码中，dist不提交Git，由完整包工具纳入分发。
 
-The 0.4.2→0.4.3 patch contains prebuilt pages; applying it does not require rebuilding on Sealos. Source development remains reproducible through the lockfile.
+See [deployment](../docs/DEPLOY_SEALOS.md). Existing prepared distributions already contain compiled pages.
 
-0.4.2→0.4.3 补丁包含已构建页面，应用补丁时无需在 Sealos 重新构建；源码开发仍按锁文件复现。
+详见[部署](../docs/DEPLOY_SEALOS.md)。已有预编译完整分发无需在云端重建。
